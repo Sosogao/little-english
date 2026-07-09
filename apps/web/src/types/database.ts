@@ -131,6 +131,19 @@ export type LearningMemory = {
   status: 'new' | 'learning' | 'reviewing' | 'mastered';
 };
 
+export type MemoryReviewItem = {
+  id: string;
+  learnerId: string;
+  memoryId: string;
+  dueDate: string;
+  intervalDays: number;
+  easeFactor: number;
+  reviewCount: number;
+  lastResult?: 'again' | 'hard' | 'good' | 'easy';
+  status: 'due' | 'scheduled' | 'completed';
+  updatedAt: string;
+};
+
 export type LearningEvent = {
   id: string;
   learnerId: string;

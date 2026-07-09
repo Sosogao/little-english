@@ -4,6 +4,7 @@ import { StatPill } from '@/components/ui/StatPill';
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { todayIsoDate } from '@/utils/date';
 
 export function HomePage() {
   const activeLearner = useLearnerStore((state) => state.getActiveLearner());
@@ -16,7 +17,7 @@ export function HomePage() {
   const getTodayThemeForLearner = useThemeStore(
     (state) => state.getTodayThemeForLearner,
   );
-  const reviewCount = useLearningStore((state) => state.reviewCount);
+  const reviewItems = useLearningStore((state) => state.reviewItems);
 
   if (!activeLearner) {
     return <Navigate to="/learners" replace />;
@@ -25,6 +26,9 @@ export function HomePage() {
   const companion = getCompanionForLearner(activeLearner.id);
   const profile = getProfileForLearner(activeLearner.id);
   const todayTheme = getTodayThemeForLearner(activeLearner.id);
+  const reviewCount = reviewItems.filter(
+    (item) => item.learnerId === activeLearner.id && item.dueDate <= todayIsoDate(),
+  ).length;
 
   if (!todayTheme) {
     return (

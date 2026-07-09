@@ -9,11 +9,14 @@ import type {
   GrowthSnapshot,
   LearningEvent,
   LearningMemory,
+  MemoryReviewItem,
   ThemePlan,
   VocabularyItem,
 } from '@/types/database';
 import type { LearningFlowProgress, LearningStepId } from '@/types/learning';
-import { todayIsoDate } from '@/utils/date';
+import type { ReviewResult } from '@/services/reviewService';
+import { getReviewIntervalDays } from '@/services/reviewService';
+import { addDaysIsoDate, todayIsoDate } from '@/utils/date';
 import { clampMastery } from '@/utils/mastery';
 
 const firstStepId: LearningStepId = 'warmup';
@@ -22,8 +25,19 @@ type LearningState = {
   reviewCount: number;
   flowProgress: LearningFlowProgress[];
   learningMemory: LearningMemory[];
+  reviewItems: MemoryReviewItem[];
   learningEvents: LearningEvent[];
   growthSnapshots: GrowthSnapshot[];
+  getDueReviewItems: (learnerId: string) => MemoryReviewItem[];
+  getDueReviewCount: (learnerId: string) => number;
+  getMemoryForReviewItem: (
+    reviewItem: MemoryReviewItem,
+  ) => LearningMemory | undefined;
+  reviewMemoryItem: (
+    learnerId: string,
+    reviewItemId: string,
+    result: ReviewResult,
+  ) => void;
   getFlowProgress: (
     themePlanId: string,
     learnerId: string,
@@ -60,6 +74,14 @@ function loadLearningMemory() {
 
 function saveLearningMemory(learningMemory: LearningMemory[]) {
   saveJson(storageKeys.learningMemory, learningMemory);
+}
+
+function loadReviewItems() {
+  return loadJson<MemoryReviewItem[]>(storageKeys.reviewItems, []);
+}
+
+function saveReviewItems(reviewItems: MemoryReviewItem[]) {
+  saveJson(storageKeys.reviewItems, reviewItems);
 }
 
 function loadLearningEvents() {
@@ -113,6 +135,10 @@ function normalizeContent(content: string) {
 
 function memoryId(learnerId: string, type: LearningMemory['type'], content: string) {
   return `memory_${learnerId}_${type}_${normalizeContent(content).replace(/[^a-z0-9]+/g, '_')}`;
+}
+
+function reviewItemId(learnerId: string, memoryIdValue: string) {
+  return `review_${learnerId}_${memoryIdValue}`;
 }
 
 function eventId(learnerId: string, type: LearningEvent['type']) {
@@ -274,6 +300,36 @@ function recordWordSeen(
   });
 }
 
+function upsertReviewItemForMemory(
+  reviewItems: MemoryReviewItem[],
+  learnerId: string,
+  memory: LearningMemory,
+  updatedAt: string,
+) {
+  const existingReviewItem = reviewItems.find(
+    (item) => item.learnerId === learnerId && item.memoryId === memory.id,
+  );
+
+  if (existingReviewItem) {
+    return reviewItems;
+  }
+
+  const dueDate = todayIsoDate();
+  const nextReviewItem: MemoryReviewItem = {
+    id: reviewItemId(learnerId, memory.id),
+    learnerId,
+    memoryId: memory.id,
+    dueDate,
+    intervalDays: 0,
+    easeFactor: 2.5,
+    reviewCount: 0,
+    status: 'due',
+    updatedAt,
+  };
+
+  return [...reviewItems, nextReviewItem];
+}
+
 function findMemory(
   learningMemory: LearningMemory[],
   learnerId: string,
@@ -312,11 +368,13 @@ function addStepLearningData(
     learnerId: string;
     stepId: LearningStepId;
     learningMemory: LearningMemory[];
+    reviewItems: MemoryReviewItem[];
     learningEvents: LearningEvent[];
     seenAt: string;
   },
 ) {
   let learningMemory = input.learningMemory;
+  let reviewItems = input.reviewItems;
   let learningEvents = input.learningEvents;
   const eventBase = {
     learnerId: input.learnerId,
@@ -438,6 +496,15 @@ function addStepLearningData(
         item.word,
       );
 
+      if (afterMemory) {
+        reviewItems = upsertReviewItemForMemory(
+          reviewItems,
+          input.learnerId,
+          afterMemory,
+          input.seenAt,
+        );
+      }
+
       if (
         afterMemory?.status === 'mastered' &&
         beforeMemory?.status !== 'mastered'
@@ -547,15 +614,110 @@ function addStepLearningData(
     );
   }
 
-  return { learningMemory, learningEvents };
+  return { learningMemory, reviewItems, learningEvents };
+}
+
+function isReviewItemDue(reviewItem: MemoryReviewItem) {
+  return reviewItem.dueDate <= todayIsoDate();
+}
+
+function getReviewMasteryDelta(result: ReviewResult) {
+  if (result === 'again') return -10;
+  if (result === 'hard') return 2;
+  if (result === 'good') return 8;
+  return 15;
+}
+
+function getNextEaseFactor(easeFactor: number, result: ReviewResult) {
+  if (result === 'again') return Math.max(1.3, easeFactor - 0.2);
+  if (result === 'hard') return Math.max(1.3, easeFactor - 0.1);
+  if (result === 'easy') return easeFactor + 0.15;
+  return easeFactor;
 }
 
 export const useLearningStore = create<LearningState>((set, get) => ({
   reviewCount: 0,
   flowProgress: loadFlowProgress(),
   learningMemory: loadLearningMemory(),
+  reviewItems: loadReviewItems(),
   learningEvents: loadLearningEvents(),
   growthSnapshots: loadGrowthSnapshots(),
+  getDueReviewItems: (learnerId) =>
+    get()
+      .reviewItems.filter(
+        (item) => item.learnerId === learnerId && isReviewItemDue(item),
+      )
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+  getDueReviewCount: (learnerId) => get().getDueReviewItems(learnerId).length,
+  getMemoryForReviewItem: (reviewItem) =>
+    get().learningMemory.find((memory) => memory.id === reviewItem.memoryId),
+  reviewMemoryItem: (learnerId, reviewItemIdValue, result) => {
+    const reviewItem = get().reviewItems.find(
+      (item) => item.id === reviewItemIdValue && item.learnerId === learnerId,
+    );
+
+    if (!reviewItem) {
+      return;
+    }
+
+    const memory = get().learningMemory.find(
+      (item) => item.id === reviewItem.memoryId && item.learnerId === learnerId,
+    );
+
+    if (!memory) {
+      return;
+    }
+
+    const intervalDays = getReviewIntervalDays(result);
+    const reviewedAt = new Date().toISOString();
+    const mastery = clampMastery(memory.mastery + getReviewMasteryDelta(result));
+    const nextMemory: LearningMemory = {
+      ...memory,
+      mastery,
+      correctCount:
+        result === 'again' ? memory.correctCount : memory.correctCount + 1,
+      mistakeCount:
+        result === 'again' ? memory.mistakeCount + 1 : memory.mistakeCount,
+      lastSeenAt: reviewedAt,
+      status: getMasteryStatus(mastery),
+    };
+    const nextReviewItem: MemoryReviewItem = {
+      ...reviewItem,
+      dueDate: addDaysIsoDate(intervalDays),
+      intervalDays,
+      easeFactor: getNextEaseFactor(reviewItem.easeFactor, result),
+      reviewCount: reviewItem.reviewCount + 1,
+      lastResult: result,
+      status: intervalDays === 0 ? 'due' : 'scheduled',
+      updatedAt: reviewedAt,
+    };
+    const learningMemory = get().learningMemory.map((item) =>
+      item.id === nextMemory.id ? nextMemory : item,
+    );
+    const reviewItems = get().reviewItems.map((item) =>
+      item.id === nextReviewItem.id ? nextReviewItem : item,
+    );
+    const learningEvents = appendEvent(
+      get().learningEvents,
+      {
+        learnerId,
+        type: 'review_completed',
+        payload: {
+          memoryId: memory.id,
+          content: memory.content,
+          result,
+          mastery,
+          nextDueDate: nextReviewItem.dueDate,
+        },
+      },
+      reviewedAt,
+    );
+
+    saveLearningMemory(learningMemory);
+    saveReviewItems(reviewItems);
+    saveLearningEvents(learningEvents);
+    set({ learningMemory, reviewItems, learningEvents });
+  },
   getFlowProgress: (themePlanId, learnerId) => {
     const existingProgress = get().flowProgress.find(
       (progress) =>
@@ -604,11 +766,12 @@ export const useLearningStore = create<LearningState>((set, get) => ({
     }
 
     const seenAt = new Date().toISOString();
-    const { learningMemory, learningEvents } = addStepLearningData({
+    const { learningMemory, reviewItems, learningEvents } = addStepLearningData({
       themePlan,
       learnerId,
       stepId,
       learningMemory: get().learningMemory,
+      reviewItems: get().reviewItems,
       learningEvents: get().learningEvents,
       seenAt,
     });
@@ -620,8 +783,9 @@ export const useLearningStore = create<LearningState>((set, get) => ({
     });
 
     saveLearningMemory(learningMemory);
+    saveReviewItems(reviewItems);
     saveLearningEvents(learningEvents);
     saveGrowthSnapshots(growthSnapshots);
-    set({ learningMemory, learningEvents, growthSnapshots });
+    set({ learningMemory, reviewItems, learningEvents, growthSnapshots });
   },
 }));
