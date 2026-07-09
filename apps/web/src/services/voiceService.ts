@@ -1,16 +1,42 @@
 const voiceStorageKeys = {
-  voiceURI: 'journey_ai.voice.voiceURI',
+  apiKey: 'journey_ai.voice.openaiApiKey',
+  cachePrefix: 'journey_ai.voice.cache.',
+  provider: 'journey_ai.voice.provider',
   rate: 'journey_ai.voice.rate',
+  voiceURI: 'journey_ai.voice.voiceURI',
 } as const;
+
+const openAiSpeechModel = 'gpt-4o-mini-tts';
+const openAiTtsEndpoint = 'https://api.openai.com/v1/audio/speech';
+const openAiInstructions =
+  'Speak like a warm, friendly English teacher for a child. Use clear pronunciation, gentle energy, and a slightly slower pace.';
+
+let activeAudio: HTMLAudioElement | null = null;
+
+export type VoiceProviderId = 'browser' | 'openai';
 
 export type VoiceRateOption = {
   label: 'Slow' | 'Normal' | 'Fast';
   value: number;
 };
 
+export type VoiceOption = {
+  id: string;
+  label: string;
+  provider: VoiceProviderId;
+};
+
 export type SpeakOptions = {
+  provider?: VoiceProviderId;
   rate?: number;
   voiceURI?: string;
+};
+
+export type VoiceProvider = {
+  id: VoiceProviderId;
+  getVoices: () => VoiceOption[];
+  speak: (text: string, options: Required<SpeakOptions>) => Promise<void>;
+  stop: () => void;
 };
 
 export const voiceRateOptions: VoiceRateOption[] = [
@@ -19,38 +45,116 @@ export const voiceRateOptions: VoiceRateOption[] = [
   { label: 'Fast', value: 1.1 },
 ];
 
+export const voiceProviderOptions: Array<{
+  id: VoiceProviderId;
+  label: string;
+}> = [
+  { id: 'browser', label: 'Browser' },
+  { id: 'openai', label: 'OpenAI' },
+];
+
+const openAiVoiceOptions: VoiceOption[] = [
+  { id: 'coral', label: 'Coral - warm teacher', provider: 'openai' },
+  { id: 'alloy', label: 'Alloy - clear and balanced', provider: 'openai' },
+  { id: 'ash', label: 'Ash - gentle and calm', provider: 'openai' },
+  { id: 'ballad', label: 'Ballad - soft storyteller', provider: 'openai' },
+  { id: 'echo', label: 'Echo - bright and clear', provider: 'openai' },
+  { id: 'fable', label: 'Fable - friendly narrator', provider: 'openai' },
+  { id: 'nova', label: 'Nova - lively teacher', provider: 'openai' },
+  { id: 'sage', label: 'Sage - patient guide', provider: 'openai' },
+  { id: 'shimmer', label: 'Shimmer - cheerful voice', provider: 'openai' },
+];
+
 export function canUseSpeechSynthesis() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
-function readVoiceURI() {
-  if (typeof window === 'undefined') {
-    return '';
+function hasWindow() {
+  return typeof window !== 'undefined';
+}
+
+function readText(key: string, fallback = '') {
+  if (!hasWindow()) {
+    return fallback;
   }
 
-  return window.localStorage.getItem(voiceStorageKeys.voiceURI) ?? '';
+  return window.localStorage.getItem(key) ?? fallback;
+}
+
+function writeText(key: string, value: string) {
+  if (!hasWindow()) {
+    return;
+  }
+
+  window.localStorage.setItem(key, value);
+}
+
+function readProvider() {
+  const provider = readText(voiceStorageKeys.provider, 'openai');
+
+  return provider === 'browser' || provider === 'openai' ? provider : 'openai';
+}
+
+function readVoiceURI() {
+  return readText(voiceStorageKeys.voiceURI, 'coral');
 }
 
 function readRate() {
-  if (typeof window === 'undefined') {
-    return voiceRateOptions[1].value;
-  }
-
-  const savedRate = Number(window.localStorage.getItem(voiceStorageKeys.rate));
+  const savedRate = Number(readText(voiceStorageKeys.rate));
   const matchingRate = voiceRateOptions.find((option) => option.value === savedRate);
 
-  return matchingRate?.value ?? voiceRateOptions[1].value;
+  return matchingRate?.value ?? voiceRateOptions[0].value;
 }
 
-export function getSelectedVoiceURI() {
-  return readVoiceURI();
+function readOpenAIApiKey() {
+  return readText(voiceStorageKeys.apiKey);
 }
 
-export function getSelectedRate() {
-  return readRate();
+function cacheKey(input: Required<SpeakOptions> & { text: string }) {
+  return [
+    input.provider,
+    input.voiceURI,
+    input.rate,
+    input.text.trim().toLowerCase(),
+  ].join('|');
 }
 
-export function getVoices() {
+function cacheStorageKey(key: string) {
+  return `${voiceStorageKeys.cachePrefix}${encodeURIComponent(key)}`;
+}
+
+function readCachedAudio(key: string) {
+  return readText(cacheStorageKey(key));
+}
+
+function writeCachedAudio(key: string, dataUrl: string) {
+  try {
+    writeText(cacheStorageKey(key), dataUrl);
+  } catch {
+    // localStorage can fill up; playback should still work without cache.
+  }
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function playAudioSource(source: string) {
+  return new Promise<void>((resolve, reject) => {
+    activeAudio?.pause();
+    activeAudio = new Audio(source);
+    activeAudio.onended = () => resolve();
+    activeAudio.onerror = () => reject(new Error('Audio playback failed.'));
+    void activeAudio.play().catch(reject);
+  });
+}
+
+function getBrowserVoices() {
   if (!canUseSpeechSynthesis()) {
     return [];
   }
@@ -61,53 +165,175 @@ export function getVoices() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function findVoice(voiceURI: string) {
-  return getVoices().find((voice) => voice.voiceURI === voiceURI);
+function getBrowserVoiceOptions(): VoiceOption[] {
+  return getBrowserVoices().map((voice) => ({
+    id: voice.voiceURI,
+    label: `${voice.name} (${voice.lang})`,
+    provider: 'browser',
+  }));
+}
+
+function findBrowserVoice(voiceURI: string) {
+  return getBrowserVoices().find((voice) => voice.voiceURI === voiceURI);
+}
+
+const browserVoiceProvider: VoiceProvider = {
+  id: 'browser',
+  getVoices: getBrowserVoiceOptions,
+  speak: async (text, options) => {
+    if (!canUseSpeechSynthesis()) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    activeAudio?.pause();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = findBrowserVoice(options.voiceURI);
+
+    utterance.lang = voice?.lang ?? 'en-US';
+    utterance.rate = options.rate;
+
+    if (voice) {
+      utterance.voice = voice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  },
+  stop: () => {
+    if (canUseSpeechSynthesis()) {
+      window.speechSynthesis.cancel();
+    }
+  },
+};
+
+const openAITTSProvider: VoiceProvider = {
+  id: 'openai',
+  getVoices: () => openAiVoiceOptions,
+  speak: async (text, options) => {
+    const apiKey = readOpenAIApiKey();
+
+    if (!apiKey) {
+      throw new Error('Missing OpenAI API key.');
+    }
+
+    const key = cacheKey({ ...options, text, provider: 'openai' });
+    const cachedAudio = readCachedAudio(key);
+
+    if (cachedAudio) {
+      await playAudioSource(cachedAudio);
+      return;
+    }
+
+    const response = await fetch(openAiTtsEndpoint, {
+      body: JSON.stringify({
+        input: text,
+        instructions: openAiInstructions,
+        model: openAiSpeechModel,
+        response_format: 'mp3',
+        speed: options.rate,
+        voice: options.voiceURI || 'coral',
+      }),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI TTS failed: ${response.status}`);
+    }
+
+    const dataUrl = await blobToDataUrl(await response.blob());
+    writeCachedAudio(key, dataUrl);
+    await playAudioSource(dataUrl);
+  },
+  stop: () => {
+    activeAudio?.pause();
+    activeAudio = null;
+  },
+};
+
+const providers: Record<VoiceProviderId, VoiceProvider> = {
+  browser: browserVoiceProvider,
+  openai: openAITTSProvider,
+};
+
+function getResolvedOptions(options: SpeakOptions): Required<SpeakOptions> {
+  const provider = options.provider ?? readProvider();
+
+  return {
+    provider,
+    rate: options.rate ?? readRate(),
+    voiceURI: options.voiceURI ?? readVoiceURI(),
+  };
+}
+
+export function getSelectedProvider() {
+  return readProvider();
+}
+
+export function getSelectedVoiceURI() {
+  return readVoiceURI();
+}
+
+export function getSelectedRate() {
+  return readRate();
+}
+
+export function getOpenAIApiKey() {
+  return readOpenAIApiKey();
+}
+
+export function getVoices(provider: VoiceProviderId = readProvider()) {
+  return providers[provider].getVoices();
+}
+
+export function setProvider(provider: VoiceProviderId) {
+  writeText(voiceStorageKeys.provider, provider);
+
+  if (provider === 'openai' && !openAiVoiceOptions.some((voice) => voice.id === readVoiceURI())) {
+    setVoice('coral');
+  }
 }
 
 export function setVoice(voiceURI: string) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(voiceStorageKeys.voiceURI, voiceURI);
+  writeText(voiceStorageKeys.voiceURI, voiceURI);
 }
 
 export function setRate(rate: number) {
-  if (typeof window === 'undefined') {
-    return;
-  }
+  writeText(voiceStorageKeys.rate, String(rate));
+}
 
-  window.localStorage.setItem(voiceStorageKeys.rate, String(rate));
+export function setOpenAIApiKey(apiKey: string) {
+  writeText(voiceStorageKeys.apiKey, apiKey.trim());
 }
 
 export function stop() {
-  if (!canUseSpeechSynthesis()) {
-    return;
-  }
+  activeAudio?.pause();
+  activeAudio = null;
 
-  window.speechSynthesis.cancel();
+  Object.values(providers).forEach((provider) => provider.stop());
 }
 
-export function speak(text: string, options: SpeakOptions = {}) {
-  if (!canUseSpeechSynthesis()) {
-    return;
+export async function speak(text: string, options: SpeakOptions = {}) {
+  const resolvedOptions = getResolvedOptions(options);
+  const selectedProvider = providers[resolvedOptions.provider];
+
+  stop();
+
+  try {
+    await selectedProvider.speak(text, resolvedOptions);
+  } catch {
+    if (resolvedOptions.provider !== 'browser') {
+      await browserVoiceProvider.speak(text, {
+        ...resolvedOptions,
+        provider: 'browser',
+      });
+    }
   }
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  const voice = findVoice(options.voiceURI ?? readVoiceURI());
-
-  window.speechSynthesis.cancel();
-  utterance.lang = voice?.lang ?? 'en-US';
-  utterance.rate = options.rate ?? readRate();
-
-  if (voice) {
-    utterance.voice = voice;
-  }
-
-  window.speechSynthesis.speak(utterance);
 }
 
 export function speakText(text: string) {
-  speak(text);
+  void speak(text);
 }

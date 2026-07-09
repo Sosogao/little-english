@@ -1,23 +1,32 @@
 import { useEffect, useState } from 'react';
 
 import {
+  getOpenAIApiKey,
   getSelectedRate,
+  getSelectedProvider,
   getSelectedVoiceURI,
   getVoices,
+  setOpenAIApiKey,
+  setProvider,
   setRate,
   setVoice,
   speak,
   stop,
+  type VoiceProviderId,
   voiceRateOptions,
+  voiceProviderOptions,
 } from '@/services/voiceService';
 
 export function SettingsPage() {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedProvider, setSelectedProvider] =
+    useState<VoiceProviderId>(getSelectedProvider);
+  const [voices, setVoices] = useState(() => getVoices(getSelectedProvider()));
+  const [apiKey, setApiKey] = useState(getOpenAIApiKey);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(getSelectedVoiceURI);
   const [selectedRate, setSelectedRate] = useState(getSelectedRate);
 
   useEffect(() => {
-    const syncVoices = () => setVoices(getVoices());
+    const syncVoices = () => setVoices(getVoices(selectedProvider));
 
     syncVoices();
 
@@ -30,7 +39,18 @@ export function SettingsPage() {
         window.speechSynthesis.removeEventListener('voiceschanged', syncVoices);
       }
     };
-  }, []);
+  }, [selectedProvider]);
+
+  const handleProviderChange = (provider: VoiceProviderId) => {
+    setSelectedProvider(provider);
+    setProvider(provider);
+    const providerVoices = getVoices(provider);
+    const nextVoice = providerVoices[0]?.id ?? '';
+
+    setVoices(providerVoices);
+    setSelectedVoiceURI(nextVoice);
+    setVoice(nextVoice);
+  };
 
   const handleVoiceChange = (voiceURI: string) => {
     setSelectedVoiceURI(voiceURI);
@@ -42,8 +62,14 @@ export function SettingsPage() {
     setRate(rate);
   };
 
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    setOpenAIApiKey(value);
+  };
+
   const testVoice = () => {
-    speak('Hello. I am ready for today\'s English adventure.', {
+    void speak('Hello. I am ready for today\'s English adventure.', {
+      provider: selectedProvider,
       rate: selectedRate,
       voiceURI: selectedVoiceURI,
     });
@@ -59,20 +85,62 @@ export function SettingsPage() {
           Voice Settings
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          Current playback uses your browser&apos;s system voices. A more natural
-          AI voice can be added later without changing the learning flow.
+          Choose browser speech or OpenAI TTS. API keys are stored only in this
+          browser and are never committed to the project.
         </p>
       </div>
 
       <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
+        <fieldset className="mb-6">
+          <legend className="text-sm font-bold text-slate-700">
+            Voice Provider
+          </legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {voiceProviderOptions.map((provider) => (
+              <button
+                key={provider.id}
+                type="button"
+                onClick={() => handleProviderChange(provider.id)}
+                className={[
+                  'rounded-2xl border px-4 py-3 text-sm font-bold transition',
+                  selectedProvider === provider.id
+                    ? 'border-meadow-500 bg-meadow-50 text-meadow-700'
+                    : 'border-amber-100 bg-white text-slate-700 hover:border-meadow-500',
+                ].join(' ')}
+              >
+                {provider.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {selectedProvider === 'openai' ? (
+          <label className="mb-6 block">
+            <span className="text-sm font-bold text-slate-700">
+              OpenAI API Key
+            </span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(event) => handleApiKeyChange(event.target.value)}
+              placeholder="sk-..."
+              className="mt-2 w-full rounded-2xl border border-amber-100 bg-[#fffdf7] px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-meadow-500 focus:ring-4 focus:ring-meadow-100"
+            />
+            <span className="mt-2 block text-xs font-semibold text-slate-500">
+              Stored locally in this browser. If OpenAI is unavailable, playback
+              falls back to Browser automatically.
+            </span>
+          </label>
+        ) : null}
+
         {voices.length === 0 ? (
           <div className="rounded-3xl bg-sunshine-100 p-5">
             <p className="text-lg font-bold text-slate-950">
-              No English system voice found.
+              No voice found for this provider.
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Try enabling an English voice in your browser or operating system
-              voice settings.
+              Browser mode needs an English system voice. OpenAI mode needs a
+              local API key.
             </p>
           </div>
         ) : (
@@ -84,10 +152,12 @@ export function SettingsPage() {
                 onChange={(event) => handleVoiceChange(event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-amber-100 bg-[#fffdf7] px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-meadow-500 focus:ring-4 focus:ring-meadow-100"
               >
-                <option value="">Browser default English voice</option>
+                {selectedProvider === 'browser' ? (
+                  <option value="">Browser default English voice</option>
+                ) : null}
                 {voices.map((voice) => (
-                  <option key={voice.voiceURI} value={voice.voiceURI}>
-                    {voice.name} ({voice.lang})
+                  <option key={voice.id} value={voice.id}>
+                    {voice.label}
                   </option>
                 ))}
               </select>
