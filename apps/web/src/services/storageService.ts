@@ -9,6 +9,7 @@ export const storageKeys = {
   learningEvents: 'journey_ai.learningEvents',
   growthSnapshots: 'journey_ai.growthSnapshots',
   learnerProfiles: 'journey_ai.learnerProfiles',
+  learningFlowProgress: 'journey_ai.learningFlowProgress',
 } as const;
 
 export function loadJson<T>(key: string, fallback: T): T {

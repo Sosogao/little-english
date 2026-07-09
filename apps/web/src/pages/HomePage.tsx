@@ -88,12 +88,12 @@ export function HomePage() {
             <StatPill label="Streak" value={`${activeLearner.streakDays} days`} />
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a
-              href="#today-plan"
+            <Link
+              to="/learn"
               className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
             >
               Start Today
-            </a>
+            </Link>
             <Link
               to="/learners"
               className="rounded-full border border-amber-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
