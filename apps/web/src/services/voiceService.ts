@@ -5,12 +5,12 @@ const voiceStorageKeys = {
   voiceURI: 'journey_ai.voice.voiceURI',
 } as const;
 
-const openAiTtsEndpoint = '/api/tts';
+const ttsEndpoint = '/api/tts';
 
 let activeAudio: HTMLAudioElement | null = null;
 let activePlaybackDone: (() => void) | null = null;
 
-export type VoiceProviderId = 'browser' | 'openai';
+export type VoiceProviderId = 'browser' | 'edge' | 'openai';
 
 export type VoiceRateOption = {
   label: 'Slow' | 'Normal' | 'Fast';
@@ -56,8 +56,18 @@ export const voiceProviderOptions: Array<{
   id: VoiceProviderId;
   label: string;
 }> = [
+  { id: 'edge', label: 'Edge' },
   { id: 'browser', label: 'Browser' },
   { id: 'openai', label: 'OpenAI' },
+];
+
+const edgeVoiceOptions: VoiceOption[] = [
+  { id: 'en-US-AriaNeural', label: 'Aria - clear teacher', provider: 'edge' },
+  { id: 'en-US-JennyNeural', label: 'Jenny - warm guide', provider: 'edge' },
+  { id: 'en-US-AnaNeural', label: 'Ana - gentle learner voice', provider: 'edge' },
+  { id: 'en-US-GuyNeural', label: 'Guy - calm teacher', provider: 'edge' },
+  { id: 'en-GB-SoniaNeural', label: 'Sonia - British storyteller', provider: 'edge' },
+  { id: 'en-GB-RyanNeural', label: 'Ryan - British guide', provider: 'edge' },
 ];
 
 const openAiVoiceOptions: VoiceOption[] = [
@@ -97,13 +107,15 @@ function writeText(key: string, value: string) {
 }
 
 function readProvider() {
-  const provider = readText(voiceStorageKeys.provider, 'openai');
+  const provider = readText(voiceStorageKeys.provider, 'edge');
 
-  return provider === 'browser' || provider === 'openai' ? provider : 'openai';
+  return provider === 'browser' || provider === 'edge' || provider === 'openai'
+    ? provider
+    : 'edge';
 }
 
 function readVoiceURI() {
-  return readText(voiceStorageKeys.voiceURI, 'coral');
+  return readText(voiceStorageKeys.voiceURI, 'en-US-AriaNeural');
 }
 
 function readRate() {
@@ -234,6 +246,45 @@ const browserVoiceProvider: VoiceProvider = {
   },
 };
 
+const edgeVoiceProvider: VoiceProvider = {
+  id: 'edge',
+  getVoices: () => edgeVoiceOptions,
+  speak: async (text, options) => {
+    const key = cacheKey({ ...options, text, provider: 'edge' });
+    const cachedAudio = options.bypassCache ? '' : readCachedAudio(key);
+
+    if (cachedAudio) {
+      await playAudioSource(cachedAudio);
+      return;
+    }
+
+    const response = await fetch(ttsEndpoint, {
+      body: JSON.stringify({
+        provider: 'edge',
+        rate: options.rate,
+        text,
+        voice: options.voiceURI || 'en-US-AriaNeural',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Edge TTS failed: ${response.status}`);
+    }
+
+    const dataUrl = await blobToDataUrl(await response.blob());
+    writeCachedAudio(key, dataUrl);
+    await playAudioSource(dataUrl);
+  },
+  stop: () => {
+    activeAudio?.pause();
+    activeAudio = null;
+  },
+};
+
 const openAITTSProvider: VoiceProvider = {
   id: 'openai',
   getVoices: () => openAiVoiceOptions,
@@ -246,8 +297,9 @@ const openAITTSProvider: VoiceProvider = {
       return;
     }
 
-    const response = await fetch(openAiTtsEndpoint, {
+    const response = await fetch(ttsEndpoint, {
       body: JSON.stringify({
+        provider: 'openai',
         rate: options.rate,
         text,
         voice: options.voiceURI || 'coral',
@@ -274,6 +326,7 @@ const openAITTSProvider: VoiceProvider = {
 
 const providers: Record<VoiceProviderId, VoiceProvider> = {
   browser: browserVoiceProvider,
+  edge: edgeVoiceProvider,
   openai: openAITTSProvider,
 };
 
@@ -320,7 +373,14 @@ export function subscribeToVoiceChanges(onChange: () => void) {
 export function setProvider(provider: VoiceProviderId) {
   writeText(voiceStorageKeys.provider, provider);
 
-  if (provider === 'openai' && !openAiVoiceOptions.some((voice) => voice.id === readVoiceURI())) {
+  if (provider === 'edge' && !edgeVoiceOptions.some((voice) => voice.id === readVoiceURI())) {
+    setVoice('en-US-AriaNeural');
+  }
+
+  if (
+    provider === 'openai' &&
+    !openAiVoiceOptions.some((voice) => voice.id === readVoiceURI())
+  ) {
     setVoice('coral');
   }
 }

@@ -86,8 +86,8 @@ export function SettingsPage() {
           Voice Settings
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          Choose browser speech or OpenAI TTS. OpenAI keys are read from the
-          server environment and are never exposed in the browser.
+          Edge voice is the default when available. Browser speech stays local,
+          and OpenAI remains optional through the server environment.
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export function SettingsPage() {
           <legend className="text-sm font-bold text-slate-700">
             Voice Provider
           </legend>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
             {voiceProviderOptions.map((provider) => (
               <button
                 key={provider.id}
