@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { speakText } from '@/services/voiceService';
 import type { LearningMemory, MemoryReviewItem, ThemePlan } from '@/types/database';
 import type { LearningStepId } from '@/types/learning';
 import type { ReviewResult } from '@/services/reviewService';
@@ -71,6 +72,7 @@ export function LearnPage() {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const completedCount = progress.completedStepIds.length;
   const progressPercent = Math.round((completedCount / learningSteps.length) * 100);
+  const celebrationStats = getCelebrationStats(todayTheme);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === learningSteps.length - 1;
 
@@ -87,7 +89,17 @@ export function LearnPage() {
     );
 
     if (!isLastStep) {
-      goToStep(learningSteps[currentStepIndex + 1].id);
+      const nextStepId = learningSteps[currentStepIndex + 1].id;
+      goToStep(nextStepId);
+
+      if (nextStepId === 'congratulations') {
+        completeLearningStep(
+          todayTheme,
+          activeLearner.id,
+          nextStepId,
+          activeLearner.streakDays,
+        );
+      }
     }
   };
 
@@ -106,7 +118,9 @@ export function LearnPage() {
               {todayTheme.title} · Day {todayTheme.dayIndex}
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">
-              {currentStep.title}
+              {currentStep.id === 'congratulations'
+                ? 'Celebration'
+                : currentStep.title}
             </h1>
           </div>
           <Link
@@ -119,8 +133,8 @@ export function LearnPage() {
 
         <div className="mt-6">
           <div className="flex items-center justify-between text-sm font-semibold text-slate-500">
-            <span>{completedCount} of {learningSteps.length} complete</span>
-            <span>{progressPercent}%</span>
+            <span>Adventure Progress</span>
+            <span>Adventure {progressPercent}%</span>
           </div>
           <div className="mt-2 h-3 overflow-hidden rounded-full bg-amber-100">
             <div
@@ -170,6 +184,7 @@ export function LearnPage() {
         <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
           <StepContent
             activeLearnerName={activeLearner.displayName}
+            celebrationStats={celebrationStats}
             companionName={companion?.name ?? 'Your companion'}
             dueReviewItems={dueReviewItems}
             getMemoryForReviewItem={(reviewItem) =>
@@ -182,23 +197,25 @@ export function LearnPage() {
             theme={todayTheme}
           />
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-amber-100 pt-5">
-            <button
-              type="button"
-              onClick={goPrevious}
-              disabled={isFirstStep}
-              className="rounded-full border border-amber-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
-            >
-              {isLastStep ? 'Finish Adventure' : 'Complete and Continue'}
-            </button>
-          </div>
+          {currentStep.id === 'congratulations' ? null : (
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-amber-100 pt-5">
+              <button
+                type="button"
+                onClick={goPrevious}
+                disabled={isFirstStep}
+                className="rounded-full border border-amber-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+              >
+                {isLastStep ? 'Finish Adventure' : 'Complete and Continue'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -207,6 +224,7 @@ export function LearnPage() {
 
 type StepContentProps = {
   activeLearnerName: string;
+  celebrationStats: CelebrationStats;
   companionName: string;
   dueReviewItems: MemoryReviewItem[];
   getMemoryForReviewItem: (
@@ -219,6 +237,7 @@ type StepContentProps = {
 
 function StepContent({
   activeLearnerName,
+  celebrationStats,
   companionName,
   dueReviewItems,
   getMemoryForReviewItem,
@@ -259,7 +278,10 @@ function StepContent({
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 {turn.speaker === 'companion' ? companionName : activeLearnerName}
               </p>
-              <p className="mt-2 text-xl font-bold text-slate-950">{turn.text}</p>
+              <div className="mt-2 flex items-center gap-3">
+                <p className="text-xl font-bold text-slate-950">{turn.text}</p>
+                <SpeechButton text={turn.text} />
+              </div>
               {turn.chineseHint ? (
                 <p className="mt-1 text-sm text-slate-500">{turn.chineseHint}</p>
               ) : null}
@@ -292,7 +314,10 @@ function StepContent({
         <div className="grid gap-3 sm:grid-cols-2">
           {theme.content.vocabulary.map((item) => (
             <div key={item.id} className="rounded-3xl bg-[#fffdf7] p-4">
-              <p className="text-2xl font-bold text-slate-950">{item.word}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-2xl font-bold text-slate-950">{item.word}</p>
+                <SpeechButton text={item.word} />
+              </div>
               <p className="mt-1 text-sm font-semibold text-meadow-700">
                 {item.meaningZh}
               </p>
@@ -315,9 +340,10 @@ function StepContent({
       >
         <div className="space-y-4">
           {theme.content.story.paragraphs.map((paragraph) => (
-            <p key={paragraph} className="text-lg leading-8 text-slate-700">
-              {paragraph}
-            </p>
+            <div key={paragraph} className="flex items-start gap-3">
+              <p className="text-lg leading-8 text-slate-700">{paragraph}</p>
+              <SpeechButton text={paragraph} />
+            </div>
           ))}
           {theme.content.story.questions.map((question) => (
             <div key={question.id} className="rounded-3xl bg-meadow-50 p-4">
@@ -393,19 +419,11 @@ function StepContent({
   }
 
   return (
-    <LearningPanel
-      eyebrow="Adventure complete"
-      title={`Great work, ${activeLearnerName}`}
-      description="Today&apos;s farm journey is complete. The saved progress will stay after refresh."
-    >
-      <div className="rounded-[2rem] bg-meadow-700 p-6 text-white">
-        <p className="text-4xl">🌟</p>
-        <p className="mt-4 text-2xl font-bold">You finished {theme.title}.</p>
-        <p className="mt-2 text-sm leading-6 text-meadow-50">
-          Come back tomorrow for the next part of the journey.
-        </p>
-      </div>
-    </LearningPanel>
+    <CelebrationPage
+      activeLearnerName={activeLearnerName}
+      stats={celebrationStats}
+      theme={theme}
+    />
   );
 }
 
@@ -448,8 +466,99 @@ function LineList({ items }: { items: string[] }) {
             {index + 1}
           </span>
           <p className="text-xl font-bold text-slate-950">{item}</p>
+          <SpeechButton text={item} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function SpeechButton({ text }: { text: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Play ${text}`}
+      onClick={() => speakText(text)}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-100 bg-white text-sm shadow-sm transition hover:border-meadow-500"
+    >
+      🔊
+    </button>
+  );
+}
+
+type CelebrationStats = {
+  wordsLearned: number;
+  sentencesPracticed: number;
+};
+
+function getCelebrationStats(theme: ThemePlan): CelebrationStats {
+  return {
+    wordsLearned: theme.content.vocabulary.length,
+    sentencesPracticed:
+      theme.content.warmup.length +
+      theme.content.conversation.length +
+      theme.content.usefulSentences.length +
+      theme.content.shadowing.length +
+      theme.content.story.paragraphs.length +
+      1,
+  };
+}
+
+type CelebrationPageProps = {
+  activeLearnerName: string;
+  stats: CelebrationStats;
+  theme: ThemePlan;
+};
+
+function CelebrationPage({
+  activeLearnerName,
+  stats,
+  theme,
+}: CelebrationPageProps) {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-[2rem] bg-meadow-700 p-7 text-white sm:p-10">
+        <p className="text-5xl">🎉</p>
+        <h2 className="mt-5 text-4xl font-bold">Congratulations</h2>
+        <p className="mt-3 text-xl font-semibold text-meadow-50">
+          Today&apos;s adventure completed.
+        </p>
+        <p className="mt-4 max-w-xl text-sm leading-6 text-meadow-50">
+          {activeLearnerName} finished {theme.title} and can continue tomorrow.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-3xl bg-[#fffdf7] p-5">
+          <p className="text-sm font-semibold text-slate-500">Words learned</p>
+          <p className="mt-2 text-4xl font-bold text-slate-950">
+            {stats.wordsLearned}
+          </p>
+        </div>
+        <div className="rounded-3xl bg-[#fffdf7] p-5">
+          <p className="text-sm font-semibold text-slate-500">
+            Sentences practiced
+          </p>
+          <p className="mt-2 text-4xl font-bold text-slate-950">
+            {stats.sentencesPracticed}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          to="/"
+          className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+        >
+          Continue Tomorrow
+        </Link>
+        <Link
+          to="/"
+          className="rounded-full border border-amber-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
+        >
+          Back Home
+        </Link>
+      </div>
     </div>
   );
 }
