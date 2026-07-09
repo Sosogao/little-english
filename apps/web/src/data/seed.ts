@@ -273,7 +273,99 @@ function createFarmThemePlan(learner: Learner): ThemePlan {
   };
 }
 
-export const mockThemePlans: ThemePlan[] = mockLearners.map(createFarmThemePlan);
+function createZooThemePlan(learner: Learner): ThemePlan {
+  return {
+    id: `theme_at_the_zoo_day_2_${learner.id}`,
+    learnerId: learner.id,
+    dayIndex: 2,
+    title: 'At the Zoo',
+    adventureTitle: "Let's Visit the Zoo",
+    theme: 'Zoo',
+    status: 'planned',
+    targetLevel: learner.currentLevel,
+    estimatedMinutes: learner.dailyGoalMinutes,
+    generatedBy: 'template',
+    content: {
+      warmup: ['Hello, zoo!', 'I see a big animal.', 'It is fun at the zoo.'],
+      conversation: [
+        {
+          speaker: 'companion',
+          text: 'What animal do you like?',
+          chineseHint: '你喜欢什么动物？',
+        },
+        {
+          speaker: 'learner',
+          text: 'I like the lion.',
+          chineseHint: '我喜欢狮子。',
+        },
+      ],
+      usefulSentences: [
+        'I like the lion.',
+        'The monkey is funny.',
+        'The elephant is big.',
+      ],
+      vocabulary: [
+        {
+          id: `vocab_lion_${learner.id}`,
+          word: 'lion',
+          meaningZh: '狮子',
+          example: 'I like the lion.',
+          difficulty: 2,
+        },
+        {
+          id: `vocab_monkey_${learner.id}`,
+          word: 'monkey',
+          meaningZh: '猴子',
+          example: 'The monkey is funny.',
+          difficulty: 2,
+        },
+        {
+          id: `vocab_elephant_${learner.id}`,
+          word: 'elephant',
+          meaningZh: '大象',
+          example: 'The elephant is big.',
+          difficulty: 2,
+        },
+        {
+          id: `vocab_panda_${learner.id}`,
+          word: 'panda',
+          meaningZh: '熊猫',
+          example: 'The panda is cute.',
+          difficulty: 1,
+        },
+      ],
+      story: {
+        title: 'Mia Visits a Zoo',
+        paragraphs: [
+          'Mia visits a zoo with her family.',
+          'She sees a lion, a monkey, an elephant, and a panda.',
+        ],
+        questions: [
+          {
+            id: `story_question_zoo_animals_${learner.id}`,
+            question: 'What animals does Mia see?',
+            options: ['Zoo animals', 'Farm animals', 'Ocean animals'],
+            answer: 'Zoo animals',
+          },
+        ],
+      },
+      shadowing: ['I like the lion.', 'The monkey is funny.', 'The elephant is big.'],
+      mission: {
+        id: `mission_zoo_sentence_${learner.id}`,
+        instruction: 'Ask someone at home: What zoo animal do you like?',
+        exampleSentence: 'What zoo animal do you like?',
+        status: 'pending',
+      },
+    },
+    createdAt,
+    scheduledDate: '2026-07-10',
+  };
+}
+
+export const mockThemePlans: ThemePlan[] = mockLearners.flatMap((learner) => [
+  createFarmThemePlan(learner),
+  createZooThemePlan(learner),
+]);
 export const mockThemePlan = mockThemePlans[0];
 
 function reconcileMockLearners(existingLearners: Learner[]) {
@@ -296,9 +388,9 @@ function reconcileMockLearners(existingLearners: Learner[]) {
 
 function reconcileThemePlans(existingThemePlans: ThemePlan[]) {
   const validPlans = existingThemePlans.filter((plan) => plan.learnerId);
-  const existingLearnerIds = new Set(validPlans.map((plan) => plan.learnerId));
+  const existingPlanIds = new Set(validPlans.map((plan) => plan.id));
   const missingMockPlans = mockThemePlans.filter(
-    (plan) => !existingLearnerIds.has(plan.learnerId),
+    (plan) => !existingPlanIds.has(plan.id),
   );
 
   return [...validPlans, ...missingMockPlans];

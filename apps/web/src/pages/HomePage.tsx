@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { StatPill } from '@/components/ui/StatPill';
 import { useLearnerStore } from '@/stores/learnerStore';
@@ -8,6 +7,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import { todayIsoDate } from '@/utils/date';
 
 export function HomePage() {
+  const navigate = useNavigate();
   const activeLearner = useLearnerStore((state) => state.getActiveLearner());
   const getCompanionForLearner = useLearnerStore(
     (state) => state.getCompanionForLearner,
@@ -17,6 +17,12 @@ export function HomePage() {
   );
   const getTodayThemeForLearner = useThemeStore(
     (state) => state.getTodayThemeForLearner,
+  );
+  const getThemeForLearnerByDay = useThemeStore(
+    (state) => state.getThemeForLearnerByDay,
+  );
+  const startThemeForLearner = useThemeStore(
+    (state) => state.startThemeForLearner,
   );
   const reviewItems = useLearningStore((state) => state.reviewItems);
   const flowProgress = useLearningStore((state) => state.flowProgress);
@@ -29,6 +35,7 @@ export function HomePage() {
   const companion = getCompanionForLearner(activeLearner.id);
   const profile = getProfileForLearner(activeLearner.id);
   const todayTheme = getTodayThemeForLearner(activeLearner.id);
+  const dayOneTheme = getThemeForLearnerByDay(activeLearner.id, 1);
   const reviewCount = reviewItems.filter(
     (item) => item.learnerId === activeLearner.id && item.dueDate <= todayIsoDate(),
   ).length;
@@ -52,9 +59,32 @@ export function HomePage() {
         savedProgress.themePlanId === todayTheme.id &&
         savedProgress.learnerId === activeLearner.id,
     ) ?? getFlowProgress(todayTheme.id, activeLearner.id);
-  const isDayOneComplete = progress.completedStepIds.includes('congratulations');
+  const dayOneProgress = dayOneTheme
+    ? (flowProgress.find(
+        (savedProgress) =>
+          savedProgress.themePlanId === dayOneTheme.id &&
+          savedProgress.learnerId === activeLearner.id,
+      ) ?? getFlowProgress(dayOneTheme.id, activeLearner.id))
+    : progress;
+  const isDayOneComplete =
+    dayOneProgress.completedStepIds.includes('congratulations') ||
+    dayOneTheme?.status === 'completed' ||
+    todayTheme.dayIndex > 1;
   const primaryActionLabel = isDayOneComplete ? 'Continue Learning' : 'Start Today';
-  const primaryActionTarget = isDayOneComplete ? '#journey-timeline' : '/learn';
+  const primaryActionTarget =
+    isDayOneComplete && todayTheme.dayIndex === 1 ? '#journey-timeline' : '/learn';
+
+  const startDayTwo = () => {
+    if (!isDayOneComplete) {
+      return;
+    }
+
+    if (todayTheme.dayIndex !== 2) {
+      startThemeForLearner(activeLearner.id, 2);
+    }
+
+    navigate('/learn');
+  };
 
   const journeySteps = [
     { title: 'Warm-up', detail: `${todayTheme.content.warmup.length} quick lines` },
@@ -170,7 +200,11 @@ export function HomePage() {
         </div>
       </div>
 
-      <JourneyTimeline isDayOneComplete={isDayOneComplete} />
+      <JourneyTimeline
+        activeDayIndex={todayTheme.dayIndex}
+        isDayOneComplete={isDayOneComplete}
+        onStartDayTwo={startDayTwo}
+      />
 
       <div id="today-plan" className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -211,8 +245,16 @@ export function HomePage() {
   );
 }
 
-function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
-  const [selectedNextAdventure, setSelectedNextAdventure] = useState(false);
+function JourneyTimeline({
+  activeDayIndex,
+  isDayOneComplete,
+  onStartDayTwo,
+}: {
+  activeDayIndex: number;
+  isDayOneComplete: boolean;
+  onStartDayTwo: () => void;
+}) {
+  const isDayTwoActive = activeDayIndex === 2;
   const timeline = [
     {
       day: 'Day1',
@@ -224,8 +266,12 @@ function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
     {
       day: 'Day2',
       title: 'Zoo',
-      marker: isDayOneComplete ? '▶' : '🔒',
-      state: isDayOneComplete ? 'Next adventure' : 'Locked',
+      marker: isDayTwoActive ? '▶' : isDayOneComplete ? '▶' : '🔒',
+      state: isDayTwoActive
+        ? 'Continue'
+        : isDayOneComplete
+          ? 'Start now'
+          : 'Locked',
       tone: isDayOneComplete ? 'active' : 'locked',
     },
     {
@@ -295,7 +341,7 @@ function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
               key={`${item.day}-${item.title}`}
               type="button"
               className={cardClassName}
-              onClick={() => setSelectedNextAdventure(true)}
+              onClick={onStartDayTwo}
             >
               {cardContent}
             </button>
@@ -306,16 +352,6 @@ function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
           );
         })}
       </div>
-
-      {selectedNextAdventure ? (
-        <div className="mt-4 rounded-3xl bg-meadow-50 p-5">
-          <p className="text-lg font-bold text-slate-950">Day2 Zoo is next.</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Today&apos;s Farm adventure is complete. Come back tomorrow to
-            continue.
-          </p>
-        </div>
-      ) : null}
     </section>
   );
 }
