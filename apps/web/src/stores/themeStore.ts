@@ -1,12 +1,23 @@
 import { create } from 'zustand';
 
-import { mockThemePlan } from '@/data/seed';
-import type { ThemePreview } from '@/types/learning';
+import { seedAppData } from '@/data/seed';
+import { loadJson, storageKeys } from '@/services/storageService';
+import type { ThemePlan } from '@/types/database';
 
 type ThemeState = {
-  todayTheme: ThemePreview;
+  themePlans: ThemePlan[];
+  getTodayThemeForLearner: (learnerId: string) => ThemePlan | undefined;
 };
 
+function loadThemePlans() {
+  seedAppData();
+  return loadJson<ThemePlan[]>(storageKeys.themePlans, []);
+}
+
 export const useThemeStore = create<ThemeState>(() => ({
-  todayTheme: mockThemePlan,
+  themePlans: loadThemePlans(),
+  getTodayThemeForLearner: (learnerId) =>
+    loadThemePlans().find(
+      (plan) => plan.learnerId === learnerId && plan.status === 'active',
+    ),
 }));

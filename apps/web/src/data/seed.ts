@@ -1,7 +1,14 @@
-import type { Companion, Family, Learner, LearnerProfile } from '@/types/database';
+import type {
+  Companion,
+  Family,
+  Learner,
+  LearnerProfile,
+  ThemePlan,
+} from '@/types/database';
 import { loadJson, saveJson, storageKeys } from '@/services/storageService';
 
 const createdAt = '2026-07-09T00:00:00.000Z';
+const scheduledDate = '2026-07-09';
 
 export const mockFamily: Family = {
   id: 'family_journey_home',
@@ -16,7 +23,7 @@ export const mockLearners: Learner[] = [
     familyId: mockFamily.id,
     displayName: '小七',
     role: 'child',
-    age: 7,
+    age: 9,
     avatarEmoji: '🌱',
     companionId: 'companion_momo',
     currentLevel: 'pre-a1',
@@ -177,13 +184,125 @@ export const mockProfiles: LearnerProfile[] = [
   },
 ];
 
-export const mockThemePlan = {
-  id: 'theme_at_the_farm_day_1',
-  title: 'At the Farm',
-  adventureTitle: "Let's Visit the Farm",
-  theme: 'Farm',
-  estimatedMinutes: 20,
-};
+function createFarmThemePlan(learner: Learner): ThemePlan {
+  return {
+    id: `theme_at_the_farm_day_1_${learner.id}`,
+    learnerId: learner.id,
+    dayIndex: 1,
+    title: 'At the Farm',
+    adventureTitle: "Let's Visit the Farm",
+    theme: 'Farm',
+    status: 'active',
+    targetLevel: learner.currentLevel,
+    estimatedMinutes: learner.dailyGoalMinutes,
+    generatedBy: 'template',
+    content: {
+      warmup: ['Hello, farm!', 'I see an animal.', 'It is a sunny day.'],
+      conversation: [
+        {
+          speaker: 'companion',
+          text: 'What animal do you see?',
+          chineseHint: '你看到了什么动物？',
+        },
+        {
+          speaker: 'learner',
+          text: 'I see a cow.',
+          chineseHint: '我看到一头奶牛。',
+        },
+      ],
+      usefulSentences: [
+        'I see a cow.',
+        'The duck is small.',
+        'Can I feed the horse?',
+      ],
+      vocabulary: [
+        {
+          id: `vocab_cow_${learner.id}`,
+          word: 'cow',
+          meaningZh: '奶牛',
+          example: 'I see a cow.',
+          difficulty: 1,
+        },
+        {
+          id: `vocab_horse_${learner.id}`,
+          word: 'horse',
+          meaningZh: '马',
+          example: 'The horse is big.',
+          difficulty: 2,
+        },
+        {
+          id: `vocab_duck_${learner.id}`,
+          word: 'duck',
+          meaningZh: '鸭子',
+          example: 'The duck is small.',
+          difficulty: 1,
+        },
+        {
+          id: `vocab_pig_${learner.id}`,
+          word: 'pig',
+          meaningZh: '猪',
+          example: 'The pig is pink.',
+          difficulty: 1,
+        },
+      ],
+      story: {
+        title: 'Tom Visits a Farm',
+        paragraphs: [
+          'Tom visits a farm with his family.',
+          'He sees a cow, a horse, a duck, and a pig.',
+        ],
+        questions: [
+          {
+            id: `story_question_animals_${learner.id}`,
+            question: 'What animals does Tom see?',
+            options: ['Farm animals', 'Ocean animals', 'Zoo animals'],
+            answer: 'Farm animals',
+          },
+        ],
+      },
+      shadowing: ['I see a cow.', 'The horse is big.', 'The duck is small.'],
+      mission: {
+        id: `mission_farm_sentence_${learner.id}`,
+        instruction: 'Ask someone at home: What animal do you like?',
+        exampleSentence: 'What animal do you like?',
+        status: 'pending',
+      },
+    },
+    createdAt,
+    scheduledDate,
+  };
+}
+
+export const mockThemePlans: ThemePlan[] = mockLearners.map(createFarmThemePlan);
+export const mockThemePlan = mockThemePlans[0];
+
+function reconcileMockLearners(existingLearners: Learner[]) {
+  const learnerById = new Map(mockLearners.map((learner) => [learner.id, learner]));
+
+  return existingLearners.map((learner) => {
+    const mockLearner = learnerById.get(learner.id);
+
+    if (!mockLearner) {
+      return learner;
+    }
+
+    return {
+      ...learner,
+      age: mockLearner.age,
+      updatedAt: mockLearner.updatedAt,
+    };
+  });
+}
+
+function reconcileThemePlans(existingThemePlans: ThemePlan[]) {
+  const validPlans = existingThemePlans.filter((plan) => plan.learnerId);
+  const existingLearnerIds = new Set(validPlans.map((plan) => plan.learnerId));
+  const missingMockPlans = mockThemePlans.filter(
+    (plan) => !existingLearnerIds.has(plan.learnerId),
+  );
+
+  return [...validPlans, ...missingMockPlans];
+}
 
 export function seedAppData() {
   if (typeof window === 'undefined') {
@@ -194,8 +313,11 @@ export function seedAppData() {
     saveJson(storageKeys.family, mockFamily);
   }
 
-  if (loadJson<Learner[]>(storageKeys.learners, []).length === 0) {
+  const existingLearners = loadJson<Learner[]>(storageKeys.learners, []);
+  if (existingLearners.length === 0) {
     saveJson(storageKeys.learners, mockLearners);
+  } else {
+    saveJson(storageKeys.learners, reconcileMockLearners(existingLearners));
   }
 
   if (loadJson<Companion[]>(storageKeys.companions, []).length === 0) {
@@ -206,7 +328,10 @@ export function seedAppData() {
     saveJson(storageKeys.learnerProfiles, mockProfiles);
   }
 
-  if (!window.localStorage.getItem(storageKeys.themePlans)) {
-    saveJson(storageKeys.themePlans, [mockThemePlan]);
+  const existingThemePlans = loadJson<ThemePlan[]>(storageKeys.themePlans, []);
+  if (existingThemePlans.length === 0) {
+    saveJson(storageKeys.themePlans, mockThemePlans);
+  } else {
+    saveJson(storageKeys.themePlans, reconcileThemePlans(existingThemePlans));
   }
 }

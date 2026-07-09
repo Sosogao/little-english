@@ -13,7 +13,9 @@ export function HomePage() {
   const getProfileForLearner = useLearnerStore(
     (state) => state.getProfileForLearner,
   );
-  const todayTheme = useThemeStore((state) => state.todayTheme);
+  const getTodayThemeForLearner = useThemeStore(
+    (state) => state.getTodayThemeForLearner,
+  );
   const reviewCount = useLearningStore((state) => state.reviewCount);
 
   if (!activeLearner) {
@@ -22,33 +24,76 @@ export function HomePage() {
 
   const companion = getCompanionForLearner(activeLearner.id);
   const profile = getProfileForLearner(activeLearner.id);
+  const todayTheme = getTodayThemeForLearner(activeLearner.id);
+
+  if (!todayTheme) {
+    return (
+      <section className="rounded-[2rem] bg-white p-8 shadow-sm">
+        <h1 className="text-3xl font-bold text-slate-950">
+          Welcome back, {activeLearner.displayName}
+        </h1>
+        <p className="mt-3 text-slate-600">
+          Today&apos;s journey is being prepared.
+        </p>
+      </section>
+    );
+  }
+
+  const journeySteps = [
+    { title: 'Warm-up', detail: `${todayTheme.content.warmup.length} quick lines` },
+    {
+      title: 'Conversation',
+      detail: `${todayTheme.content.conversation.length} gentle turns`,
+    },
+    {
+      title: 'Useful Sentences',
+      detail: `${todayTheme.content.usefulSentences.length} everyday lines`,
+    },
+    {
+      title: 'Vocabulary',
+      detail: `${todayTheme.content.vocabulary.length} farm words`,
+    },
+    { title: 'Story', detail: todayTheme.content.story.title },
+    { title: 'Shadowing', detail: `${todayTheme.content.shadowing.length} repeats` },
+    { title: 'Memory Garden', detail: `${reviewCount} due today` },
+    { title: 'Mission', detail: todayTheme.content.mission.exampleSentence },
+  ];
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
-            Welcome back, {activeLearner.displayName}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
+              Day {todayTheme.dayIndex}
+            </p>
+            <span className="rounded-full bg-sunshine-100 px-3 py-1 text-xs font-bold text-amber-800">
+              {todayTheme.status}
+            </span>
+          </div>
           <h1 className="mt-4 text-4xl font-bold leading-tight text-slate-950 sm:text-5xl">
-            {todayTheme.adventureTitle}
+            Welcome back, {activeLearner.displayName}
           </h1>
+          <p className="mt-4 text-2xl font-bold text-meadow-700">
+            {todayTheme.adventureTitle}
+          </p>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            {companion?.name} is ready for a warm farm adventure with familiar
-            words, useful sentences, and a small real-world mission.
+            {companion?.name} is ready for {todayTheme.title}: familiar farm
+            words, useful sentences, a short story, and one family mission.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <StatPill label="Theme" value={todayTheme.title} />
-            <StatPill label="Goal" value={`${activeLearner.dailyGoalMinutes} min`} />
+            <StatPill label="Theme" value={todayTheme.theme} />
+            <StatPill label="Goal" value={`${todayTheme.estimatedMinutes} min`} />
             <StatPill label="Review" value={`${reviewCount} due`} />
+            <StatPill label="Streak" value={`${activeLearner.streakDays} days`} />
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
+            <a
+              href="#today-plan"
               className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
             >
               Start Today
-            </button>
+            </a>
             <Link
               to="/learners"
               className="rounded-full border border-amber-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
@@ -67,8 +112,14 @@ export function HomePage() {
             {companion?.personality} companion
           </p>
           <p className="mt-6 text-base leading-7 text-meadow-50">
-            “Let&apos;s say one brave English sentence today.”
+            &quot;Let&apos;s say one brave English sentence today.&quot;
           </p>
+          <div className="mt-6 rounded-3xl bg-white/10 p-4">
+            <p className="text-sm font-bold text-white">Today&apos;s mission</p>
+            <p className="mt-2 text-sm leading-6 text-meadow-50">
+              {todayTheme.content.mission.instruction}
+            </p>
+          </div>
         </aside>
       </div>
 
@@ -90,6 +141,42 @@ export function HomePage() {
           <p className="mt-2 text-lg font-bold text-slate-950">
             {profile?.learningGoal}
           </p>
+        </div>
+      </div>
+
+      <div id="today-plan" className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
+              Today&apos;s journey
+            </p>
+            <h2 className="mt-2 text-3xl font-bold text-slate-950">
+              {todayTheme.title}
+            </h2>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-slate-500">
+            A calm path for today: mostly familiar practice, a little new
+            language, and one small challenge.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          {journeySteps.map((step, index) => (
+            <div
+              key={step.title}
+              className="flex items-center gap-4 rounded-3xl border border-amber-100 bg-[#fffdf7] p-4"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-sunshine-100 text-sm font-bold text-amber-800">
+                {index + 1}
+              </span>
+              <span>
+                <span className="block text-sm font-bold text-slate-900">
+                  {step.title}
+                </span>
+                <span className="block text-sm text-slate-500">{step.detail}</span>
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </section>

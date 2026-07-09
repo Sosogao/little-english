@@ -1,3 +1,3 @@
-import { mockThemePlan } from '@/data/seed';
+import { mockThemePlans } from '@/data/seed';
 
-export const mockThemePlans = [mockThemePlan];
+export { mockThemePlans };
