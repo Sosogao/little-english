@@ -25,12 +25,20 @@ export function AppLayout() {
             </span>
           </Link>
           {!isLearnerSelect && activeLearner ? (
-            <Link
-              to="/learners"
-              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-meadow-500 hover:text-meadow-700"
-            >
-              {activeLearner.avatarEmoji} {activeLearner.displayName}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/settings"
+                className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-meadow-500 hover:text-meadow-700"
+              >
+                Voice
+              </Link>
+              <Link
+                to="/learners"
+                className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-meadow-500 hover:text-meadow-700"
+              >
+                {activeLearner.avatarEmoji} {activeLearner.displayName}
+              </Link>
+            </div>
           ) : null}
         </div>
       </header>

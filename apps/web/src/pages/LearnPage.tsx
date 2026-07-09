@@ -1,14 +1,14 @@
-import { Link, Navigate } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { speakText } from '@/services/voiceService';
+import { getVoices, speak, stop } from '@/services/voiceService';
 import type { LearningMemory, MemoryReviewItem, ThemePlan } from '@/types/database';
 import type { LearningStepId } from '@/types/learning';
 import type { ReviewResult } from '@/services/reviewService';
 import { todayIsoDate } from '@/utils/date';
-import type { ReactNode } from 'react';
 
 const learningSteps: Array<{ id: LearningStepId; title: string }> = [
   { id: 'warmup', title: 'Warm-up' },
@@ -27,12 +27,17 @@ function getStepIndex(stepId: LearningStepId) {
 }
 
 export function LearnPage() {
+  const navigate = useNavigate();
   const activeLearner = useLearnerStore((state) => state.getActiveLearner());
   const getCompanionForLearner = useLearnerStore(
     (state) => state.getCompanionForLearner,
   );
   const getTodayThemeForLearner = useThemeStore(
     (state) => state.getTodayThemeForLearner,
+  );
+  const getThemesForLearner = useThemeStore((state) => state.getThemesForLearner);
+  const startThemeForLearner = useThemeStore(
+    (state) => state.startThemeForLearner,
   );
   const getFlowProgress = useLearningStore((state) => state.getFlowProgress);
   const setCurrentStep = useLearningStore((state) => state.setCurrentStep);
@@ -43,6 +48,23 @@ export function LearnPage() {
   const flowProgress = useLearningStore((state) => state.flowProgress);
   const reviewItems = useLearningStore((state) => state.reviewItems);
   const learningMemory = useLearningStore((state) => state.learningMemory);
+  const [englishVoiceCount, setEnglishVoiceCount] = useState(getVoices().length);
+
+  useEffect(() => {
+    const syncVoices = () => setEnglishVoiceCount(getVoices().length);
+
+    syncVoices();
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('voiceschanged', syncVoices);
+    }
+
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.removeEventListener('voiceschanged', syncVoices);
+      }
+    };
+  }, []);
 
   if (!activeLearner) {
     return <Navigate to="/learners" replace />;
@@ -75,6 +97,10 @@ export function LearnPage() {
   const celebrationStats = getCelebrationStats(todayTheme);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === learningSteps.length - 1;
+  const isMissionStep = currentStep.id === 'mission';
+  const nextTheme = getThemesForLearner(activeLearner.id).find(
+    (theme) => theme.dayIndex === todayTheme.dayIndex + 1,
+  );
 
   const goToStep = (stepId: LearningStepId) => {
     setCurrentStep(todayTheme.id, activeLearner.id, stepId);
@@ -109,6 +135,15 @@ export function LearnPage() {
     }
   };
 
+  const continueNextAdventure = () => {
+    if (!nextTheme) {
+      return;
+    }
+
+    startThemeForLearner(activeLearner.id, nextTheme.dayIndex);
+    navigate('/learn');
+  };
+
   return (
     <section className="space-y-6">
       <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
@@ -129,7 +164,23 @@ export function LearnPage() {
           >
             Home
           </Link>
+          <button
+            type="button"
+            onClick={stop}
+            className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
+          >
+            Stop Voice
+          </button>
         </div>
+
+        {englishVoiceCount === 0 ? (
+          <div className="mt-5 rounded-3xl bg-sunshine-100 p-4">
+            <p className="text-sm font-semibold text-slate-700">
+              No English system voice found. You can still read the lesson, or
+              enable an English voice in browser settings.
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <div className="flex items-center justify-between text-sm font-semibold text-slate-500">
@@ -195,6 +246,8 @@ export function LearnPage() {
             }
             stepId={currentStep.id}
             theme={todayTheme}
+            hasNextTheme={Boolean(nextTheme)}
+            onContinueNextAdventure={continueNextAdventure}
           />
 
           {currentStep.id === 'congratulations' ? null : (
@@ -212,7 +265,9 @@ export function LearnPage() {
                 onClick={goNext}
                 className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
               >
-                {isLastStep ? 'Finish Adventure' : 'Complete and Continue'}
+                {isLastStep || isMissionStep
+                  ? 'Finish Adventure'
+                  : 'Complete and Continue'}
               </button>
             </div>
           )}
@@ -233,6 +288,8 @@ type StepContentProps = {
   onReview: (reviewItemId: string, result: ReviewResult) => void;
   stepId: LearningStepId;
   theme: ThemePlan;
+  hasNextTheme: boolean;
+  onContinueNextAdventure: () => void;
 };
 
 function StepContent({
@@ -244,6 +301,8 @@ function StepContent({
   onReview,
   stepId,
   theme,
+  hasNextTheme,
+  onContinueNextAdventure,
 }: StepContentProps) {
   if (stepId === 'warmup') {
     return (
@@ -261,7 +320,7 @@ function StepContent({
     return (
       <LearningPanel
         eyebrow="Practice together"
-        title="A short farm conversation"
+        title={`A short ${theme.theme.toLowerCase()} conversation`}
         description="Read the companion lines first, then answer with the learner lines."
       >
         <div className="space-y-3">
@@ -308,7 +367,7 @@ function StepContent({
     return (
       <LearningPanel
         eyebrow="Vocabulary"
-        title="Meet the farm words"
+        title={`Meet the ${theme.theme.toLowerCase()} words`}
         description="Look at the word, meaning, and example. No scoring yet."
       >
         <div className="grid gap-3 sm:grid-cols-2">
@@ -421,6 +480,8 @@ function StepContent({
   return (
     <CelebrationPage
       activeLearnerName={activeLearnerName}
+      hasNextTheme={hasNextTheme}
+      onContinueNextAdventure={onContinueNextAdventure}
       stats={celebrationStats}
       theme={theme}
     />
@@ -478,7 +539,7 @@ function SpeechButton({ text }: { text: string }) {
     <button
       type="button"
       aria-label={`Play ${text}`}
-      onClick={() => speakText(text)}
+      onClick={() => speak(text)}
       className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-100 bg-white text-sm shadow-sm transition hover:border-meadow-500"
     >
       🔊
@@ -489,11 +550,13 @@ function SpeechButton({ text }: { text: string }) {
 type CelebrationStats = {
   wordsLearned: number;
   sentencesPracticed: number;
+  reviewItemsCreated: number;
 };
 
 function getCelebrationStats(theme: ThemePlan): CelebrationStats {
   return {
     wordsLearned: theme.content.vocabulary.length,
+    reviewItemsCreated: theme.content.vocabulary.length,
     sentencesPracticed:
       theme.content.warmup.length +
       theme.content.conversation.length +
@@ -506,15 +569,21 @@ function getCelebrationStats(theme: ThemePlan): CelebrationStats {
 
 type CelebrationPageProps = {
   activeLearnerName: string;
+  hasNextTheme: boolean;
+  onContinueNextAdventure: () => void;
   stats: CelebrationStats;
   theme: ThemePlan;
 };
 
 function CelebrationPage({
   activeLearnerName,
+  hasNextTheme,
+  onContinueNextAdventure,
   stats,
   theme,
 }: CelebrationPageProps) {
+  const isFinalDay = theme.dayIndex >= 30 || !hasNextTheme;
+
   return (
     <div className="space-y-6">
       <div className="rounded-[2rem] bg-meadow-700 p-7 text-white sm:p-10">
@@ -524,11 +593,12 @@ function CelebrationPage({
           Today&apos;s adventure completed.
         </p>
         <p className="mt-4 max-w-xl text-sm leading-6 text-meadow-50">
-          {activeLearnerName} finished {theme.title} and can continue tomorrow.
+          {activeLearnerName} finished {theme.title} and can keep going when
+          there is time.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-3xl bg-[#fffdf7] p-5">
           <p className="text-sm font-semibold text-slate-500">Words learned</p>
           <p className="mt-2 text-4xl font-bold text-slate-950">
@@ -543,15 +613,33 @@ function CelebrationPage({
             {stats.sentencesPracticed}
           </p>
         </div>
+        <div className="rounded-3xl bg-[#fffdf7] p-5">
+          <p className="text-sm font-semibold text-slate-500">
+            Review items created
+          </p>
+          <p className="mt-2 text-4xl font-bold text-slate-950">
+            {stats.reviewItemsCreated}
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link
-          to="/"
-          className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
-        >
-          Continue Tomorrow
-        </Link>
+        {isFinalDay ? (
+          <Link
+            to="/"
+            className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+          >
+            Restart / Review Journey
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={onContinueNextAdventure}
+            className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+          >
+            Continue Next Adventure
+          </button>
+        )}
         <Link
           to="/"
           className="rounded-full border border-amber-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"

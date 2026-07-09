@@ -7,6 +7,7 @@ import type { ThemePlan } from '@/types/database';
 type ThemeState = {
   themePlans: ThemePlan[];
   getTodayThemeForLearner: (learnerId: string) => ThemePlan | undefined;
+  getThemesForLearner: (learnerId: string) => ThemePlan[];
   getThemeForLearnerByDay: (
     learnerId: string,
     dayIndex: number,
@@ -28,6 +29,10 @@ export const useThemeStore = create<ThemeState>((set) => ({
     loadThemePlans().find(
       (plan) => plan.learnerId === learnerId && plan.status === 'active',
     ),
+  getThemesForLearner: (learnerId) =>
+    loadThemePlans()
+      .filter((plan) => plan.learnerId === learnerId)
+      .sort((a, b) => a.dayIndex - b.dayIndex),
   getThemeForLearnerByDay: (learnerId, dayIndex) =>
     loadThemePlans().find(
       (plan) => plan.learnerId === learnerId && plan.dayIndex === dayIndex,

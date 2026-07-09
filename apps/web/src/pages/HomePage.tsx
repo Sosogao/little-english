@@ -18,6 +18,7 @@ export function HomePage() {
   const getTodayThemeForLearner = useThemeStore(
     (state) => state.getTodayThemeForLearner,
   );
+  const getThemesForLearner = useThemeStore((state) => state.getThemesForLearner);
   const getThemeForLearnerByDay = useThemeStore(
     (state) => state.getThemeForLearnerByDay,
   );
@@ -35,6 +36,7 @@ export function HomePage() {
   const companion = getCompanionForLearner(activeLearner.id);
   const profile = getProfileForLearner(activeLearner.id);
   const todayTheme = getTodayThemeForLearner(activeLearner.id);
+  const journeyThemes = getThemesForLearner(activeLearner.id);
   const dayOneTheme = getThemeForLearnerByDay(activeLearner.id, 1);
   const reviewCount = reviewItems.filter(
     (item) => item.learnerId === activeLearner.id && item.dueDate <= todayIsoDate(),
@@ -71,18 +73,39 @@ export function HomePage() {
     dayOneTheme?.status === 'completed' ||
     todayTheme.dayIndex > 1;
   const primaryActionLabel = isDayOneComplete ? 'Continue Learning' : 'Start Today';
-  const primaryActionTarget =
-    isDayOneComplete && todayTheme.dayIndex === 1 ? '#journey-timeline' : '/learn';
 
-  const startDayTwo = () => {
-    if (!isDayOneComplete) {
+  const isThemeComplete = (themeId: string) => {
+    const themeProgress =
+      flowProgress.find(
+        (savedProgress) =>
+          savedProgress.themePlanId === themeId &&
+          savedProgress.learnerId === activeLearner.id,
+      ) ?? getFlowProgress(themeId, activeLearner.id);
+
+    return themeProgress.completedStepIds.includes('congratulations');
+  };
+  const completedDayIndexes = journeyThemes
+    .filter((theme) => theme.status === 'completed' || isThemeComplete(theme.id))
+    .map((theme) => theme.dayIndex);
+  const maxCompletedDayIndex = completedDayIndexes.length
+    ? Math.max(...completedDayIndexes)
+    : 0;
+
+  const startJourneyDay = (dayIndex: number) => {
+    const theme = journeyThemes.find((item) => item.dayIndex === dayIndex);
+
+    if (!theme) {
       return;
     }
 
-    if (todayTheme.dayIndex !== 2) {
-      startThemeForLearner(activeLearner.id, 2);
+    const canOpen =
+      theme.dayIndex <= maxCompletedDayIndex + 1 || theme.dayIndex === todayTheme.dayIndex;
+
+    if (!canOpen) {
+      return;
     }
 
+    startThemeForLearner(activeLearner.id, dayIndex);
     navigate('/learn');
   };
 
@@ -135,21 +158,12 @@ export function HomePage() {
             <StatPill label="Streak" value={`${activeLearner.streakDays} days`} />
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            {isDayOneComplete ? (
-              <a
-                href={primaryActionTarget}
-                className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
-              >
-                {primaryActionLabel}
-              </a>
-            ) : (
-              <Link
-                to={primaryActionTarget}
-                className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
-              >
-                {primaryActionLabel}
-              </Link>
-            )}
+            <Link
+              to="/learn"
+              className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+            >
+              {primaryActionLabel}
+            </Link>
             <Link
               to="/learners"
               className="rounded-full border border-amber-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
@@ -202,8 +216,9 @@ export function HomePage() {
 
       <JourneyTimeline
         activeDayIndex={todayTheme.dayIndex}
-        isDayOneComplete={isDayOneComplete}
-        onStartDayTwo={startDayTwo}
+        maxCompletedDayIndex={maxCompletedDayIndex}
+        onStartDay={startJourneyDay}
+        themes={journeyThemes}
       />
 
       <div id="today-plan" className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
@@ -247,49 +262,20 @@ export function HomePage() {
 
 function JourneyTimeline({
   activeDayIndex,
-  isDayOneComplete,
-  onStartDayTwo,
+  maxCompletedDayIndex,
+  onStartDay,
+  themes,
 }: {
   activeDayIndex: number;
-  isDayOneComplete: boolean;
-  onStartDayTwo: () => void;
+  maxCompletedDayIndex: number;
+  onStartDay: (dayIndex: number) => void;
+  themes: Array<{
+    dayIndex: number;
+    status: string;
+    theme: string;
+    title: string;
+  }>;
 }) {
-  const isDayTwoActive = activeDayIndex === 2;
-  const timeline = [
-    {
-      day: 'Day1',
-      title: 'Farm',
-      marker: isDayOneComplete ? '✅' : '▶',
-      state: isDayOneComplete ? 'Completed' : 'Today',
-      tone: isDayOneComplete ? 'complete' : 'active',
-    },
-    {
-      day: 'Day2',
-      title: 'Zoo',
-      marker: isDayTwoActive ? '▶' : isDayOneComplete ? '▶' : '🔒',
-      state: isDayTwoActive
-        ? 'Continue'
-        : isDayOneComplete
-          ? 'Start now'
-          : 'Locked',
-      tone: isDayOneComplete ? 'active' : 'locked',
-    },
-    {
-      day: 'Day3',
-      title: 'Birthday',
-      marker: '🔒',
-      state: 'Locked',
-      tone: 'locked',
-    },
-    {
-      day: 'Day4',
-      title: 'School',
-      marker: '🔒',
-      state: 'Locked',
-      tone: 'locked',
-    },
-  ];
-
   return (
     <section
       id="journey-timeline"
@@ -301,52 +287,64 @@ function JourneyTimeline({
             Journey timeline
           </p>
           <h2 className="mt-2 text-3xl font-bold text-slate-950">
-            Your next adventure
+            Journey Queue
           </h2>
         </div>
         <p className="max-w-md text-sm leading-6 text-slate-500">
-          Complete one adventure at a time. The next stop unlocks after today&apos;s
-          journey is done.
+          Continue the active adventure, review completed days, or unlock the
+          next day after finishing today.
         </p>
       </div>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-4">
-        {timeline.map((item) => {
-          const isNextAdventure =
-            isDayOneComplete && item.day === 'Day2' && item.title === 'Zoo';
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {themes.map((item) => {
+          const isComplete =
+            item.status === 'completed' || item.dayIndex <= maxCompletedDayIndex;
+          const isCurrent = item.dayIndex === activeDayIndex;
+          const isAvailable = item.dayIndex <= maxCompletedDayIndex + 1 || isCurrent;
+          const marker = isComplete ? '✅' : isCurrent || isAvailable ? '▶' : '🔒';
+          const state = isComplete
+            ? 'Review'
+            : isCurrent
+              ? 'Continue'
+              : isAvailable
+                ? 'Start now'
+                : 'Coming Soon';
           const cardClassName = [
-              'rounded-3xl border p-4',
-              item.tone === 'active'
+              'rounded-3xl border p-4 text-left',
+              isCurrent || (!isComplete && isAvailable)
                 ? 'border-meadow-500 bg-meadow-50'
-                : item.tone === 'complete'
+                : isComplete
                   ? 'border-amber-100 bg-[#fffdf7]'
                   : 'border-slate-100 bg-slate-50',
-              isNextAdventure
+              isAvailable
                 ? 'text-left transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-meadow-100'
-                : '',
+                : 'cursor-not-allowed opacity-70',
             ].join(' ');
           const cardContent = (
             <>
-              <p className="text-2xl">{item.marker}</p>
-              <p className="mt-3 text-sm font-bold text-slate-500">{item.day}</p>
-              <p className="mt-1 text-xl font-bold text-slate-950">{item.title}</p>
+              <p className="text-2xl">{marker}</p>
+              <p className="mt-3 text-sm font-bold text-slate-500">
+                Day {item.dayIndex}
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{item.theme}</p>
               <p className="mt-2 text-sm font-semibold text-meadow-700">
-                {item.state}
+                {state}
               </p>
             </>
           );
 
-          return isNextAdventure ? (
+          return isAvailable ? (
             <button
-              key={`${item.day}-${item.title}`}
+              key={item.dayIndex}
               type="button"
               className={cardClassName}
-              onClick={onStartDayTwo}
+              onClick={() => onStartDay(item.dayIndex)}
             >
               {cardContent}
             </button>
           ) : (
-            <div key={`${item.day}-${item.title}`} className={cardClassName}>
+            <div key={item.dayIndex} className={cardClassName}>
               {cardContent}
             </div>
           );
