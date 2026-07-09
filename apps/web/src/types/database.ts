@@ -113,3 +113,53 @@ export type Mission = {
   exampleSentence: string;
   status: 'pending' | 'completed' | 'skipped';
 };
+
+export type LearningMemory = {
+  id: string;
+  learnerId: string;
+  type: 'word' | 'sentence' | 'grammar' | 'topic' | 'pronunciation';
+  content: string;
+  normalizedContent: string;
+  meaningZh?: string;
+  examples: string[];
+  mastery: number;
+  exposureCount: number;
+  correctCount: number;
+  mistakeCount: number;
+  lastSeenAt?: string;
+  firstSeenAt: string;
+  status: 'new' | 'learning' | 'reviewing' | 'mastered';
+};
+
+export type LearningEvent = {
+  id: string;
+  learnerId: string;
+  themePlanId?: string;
+  type:
+    | 'theme_started'
+    | 'theme_completed'
+    | 'conversation_completed'
+    | 'word_seen'
+    | 'word_mastered'
+    | 'sentence_practiced'
+    | 'story_completed'
+    | 'shadowing_completed'
+    | 'mission_completed'
+    | 'review_completed';
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type GrowthSnapshot = {
+  id: string;
+  learnerId: string;
+  date: string;
+  totalWords: number;
+  masteredWords: number;
+  totalSentences: number;
+  completedThemes: number;
+  streakDays: number;
+  speakingScore?: number;
+  listeningScore?: number;
+  confidenceScore?: number;
+};

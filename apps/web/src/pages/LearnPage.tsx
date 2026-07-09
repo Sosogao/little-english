@@ -33,7 +33,9 @@ export function LearnPage() {
   );
   const getFlowProgress = useLearningStore((state) => state.getFlowProgress);
   const setCurrentStep = useLearningStore((state) => state.setCurrentStep);
-  const completeStep = useLearningStore((state) => state.completeStep);
+  const completeLearningStep = useLearningStore(
+    (state) => state.completeLearningStep,
+  );
   const flowProgress = useLearningStore((state) => state.flowProgress);
 
   if (!activeLearner) {
@@ -66,7 +68,12 @@ export function LearnPage() {
   };
 
   const goNext = () => {
-    completeStep(todayTheme.id, activeLearner.id, currentStep.id);
+    completeLearningStep(
+      todayTheme,
+      activeLearner.id,
+      currentStep.id,
+      activeLearner.streakDays,
+    );
 
     if (!isLastStep) {
       goToStep(learningSteps[currentStepIndex + 1].id);
