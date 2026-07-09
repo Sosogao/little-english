@@ -49,33 +49,39 @@ npm run build
 
 ## Voice Settings
 
-The app supports two local-first voice providers:
+The app supports three voice providers:
 
+- `Edge`: default provider, backed by the app's `/api/tts` server endpoint.
 - `Browser`: uses the browser and operating system English voices.
-- `OpenAI`: uses OpenAI TTS through the app's `/api/tts` server endpoint.
+- `OpenAI`: optional provider, also backed by `/api/tts`.
 
-To use OpenAI voice:
+To use the default Edge voice:
+
+1. Open the app.
+2. Go to `Voice` in the top navigation.
+3. Keep `Edge` selected.
+4. Pick a voice and speed, then use `Test Voice`.
+
+To use optional OpenAI voice:
 
 1. Copy `apps/web/.env.local.example` to `apps/web/.env.local`.
 2. Set `OPENAI_API_KEY` in `apps/web/.env.local`.
 3. For Vercel, add `OPENAI_API_KEY` in Project Settings -> Environment Variables.
-4. Open the app.
-5. Go to `Voice` in the top navigation.
-6. Select `OpenAI`.
-7. Pick a voice and speed, then use `Test Voice`.
+4. Select `OpenAI` in Voice Settings and test it.
 
 API keys are read only by the server endpoint and are not exposed to the browser.
 Do not commit API keys to the repository.
 
-Generated OpenAI audio is cached locally with this key shape:
+Generated provider audio is cached locally with this key shape:
 
 ```text
 provider + voice + speed + text
 ```
 
 The app reuses cached audio for repeated playback of the same word or sentence.
-Audio is generated lazily only when the learner presses a play button. If OpenAI
-is unavailable, playback automatically falls back to the Browser provider.
+Audio is generated lazily only when the learner presses a play button. If Edge
+or OpenAI is unavailable, playback automatically falls back to the Browser
+provider.
 
 Local note: `npm run dev` starts Vite only. To test `/api/tts` locally, run the
 app with Vercel's local dev server from `apps/web` so the serverless function can
