@@ -13,6 +13,13 @@ This guide does not introduce product changes, AI integration, backend services,
 - Build Command: `npm run build`
 - Output Directory: `dist`
 
+The repository also includes a root `vercel.json` fallback for projects that are
+created with the repository root as the Vercel Root Directory:
+
+- Install Command: `npm install --prefix apps/web`
+- Build Command: `npm run build --prefix apps/web`
+- Output Directory: `apps/web/dist`
+
 ## Steps
 
 1. Create a new Vercel project from the GitHub repository.
@@ -38,3 +45,13 @@ The production build should generate `apps/web/dist`.
 - Current data storage is browser `localStorage`.
 - No environment variables are required for `v0.3.0-learning-system`.
 - No server functions, API routes, or AI services are required for this deployment.
+
+## Troubleshooting
+
+If Vercel deploys successfully but the domain returns `404: NOT_FOUND`, check the
+build log. A correct deployment should run the web app build and mention Vite.
+
+If the log only says `Build Completed in /vercel/output` without running
+`npm install` or `npm run build`, Vercel is building the repository root without
+finding the Vite app. Either set Root Directory to `apps/web`, or keep the root
+`vercel.json` in place so Vercel builds `apps/web/dist`.
