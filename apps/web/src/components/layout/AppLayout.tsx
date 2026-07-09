@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
+import { appConfig } from '@/config/appConfig';
 import { useLearnerStore } from '@/stores/learnerStore';
 
 export function AppLayout() {
@@ -17,15 +18,18 @@ export function AppLayout() {
             </span>
             <span>
               <span className="block text-sm font-semibold uppercase tracking-wide text-meadow-700">
-                Journey English
+                {appConfig.productName}
               </span>
               <span className="block text-xs text-slate-500">
-                Family learning companion
+                {appConfig.productTagline}
               </span>
             </span>
           </Link>
           {!isLearnerSelect && activeLearner ? (
             <div className="flex items-center gap-2">
+              <span className="rounded-full border border-amber-200 bg-[#fffdf7] px-3 py-2 text-xs font-bold text-slate-600">
+                {appConfig.versionLabel}
+              </span>
               <Link
                 to="/settings"
                 className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-meadow-500 hover:text-meadow-700"

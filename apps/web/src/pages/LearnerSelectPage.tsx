@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+import { appConfig } from '@/config/appConfig';
 import { useLearnerStore } from '@/stores/learnerStore';
 
 export function LearnerSelectPage() {
@@ -15,13 +16,13 @@ export function LearnerSelectPage() {
     <section className="space-y-8">
       <div className="max-w-2xl">
         <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
-          Today&apos;s learner
+          {appConfig.versionLabel}
         </p>
         <h1 className="mt-3 text-4xl font-bold text-slate-950">
-          Who is learning English today?
+          Who is starting today&apos;s English adventure?
         </h1>
         <p className="mt-3 text-base leading-7 text-slate-600">
-          Each learner keeps a separate journey, companion, streak, and profile.
+          Each learner keeps a separate adventure, companion, streak, and profile.
         </p>
       </div>
 

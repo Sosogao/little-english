@@ -1,4 +1,6 @@
 export const storageKeys = {
+  appVersion: 'journey_ai.appVersion',
+  versionBaseline: 'journey_ai.versionBaseline',
   family: 'journey_ai.family',
   learners: 'journey_ai.learners',
   companions: 'journey_ai.companions',

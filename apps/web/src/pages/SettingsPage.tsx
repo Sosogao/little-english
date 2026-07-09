@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { appConfig } from '@/config/appConfig';
 import {
   getSelectedRate,
   getSelectedProvider,
@@ -80,14 +81,17 @@ export function SettingsPage() {
     <section className="space-y-6">
       <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
-          Settings
+          {appConfig.productName} {appConfig.versionLabel}
         </p>
         <h1 className="mt-2 text-3xl font-bold text-slate-950">
           Voice Settings
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          Edge voice is the default when available. Browser speech stays local,
-          and OpenAI remains optional through the server environment.
+          Edge voice stays available by default. Browser speech stays local, and
+          OpenAI remains optional through the server environment.
+        </p>
+        <p className="mt-2 text-xs font-semibold text-slate-500">
+          Version baseline: {appConfig.baselineVersion}
         </p>
       </div>
 

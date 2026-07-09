@@ -1,5 +1,6 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
+import { appConfig } from '@/config/appConfig';
 import { StatPill } from '@/components/ui/StatPill';
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
@@ -149,7 +150,8 @@ export function HomePage() {
           </p>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
             {companion?.name} is ready for {todayTheme.title}: familiar farm
-            words, useful sentences, a short story, and one family mission.
+            words, useful sentences, a short story, and one family adventure
+            mission in your {appConfig.productTagline.toLowerCase()}.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <StatPill label="Theme" value={todayTheme.theme} />
@@ -179,7 +181,7 @@ export function HomePage() {
           </div>
           <h2 className="mt-5 text-2xl font-bold">{companion?.name}</h2>
           <p className="mt-2 text-sm capitalize text-meadow-50">
-            {companion?.personality} companion
+            {companion?.personality} adventure companion
           </p>
           <p className="mt-6 text-base leading-7 text-meadow-50">
             &quot;Let&apos;s say one brave English sentence today.&quot;
