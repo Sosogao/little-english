@@ -263,3 +263,25 @@ Every review should answer:
 5. Would we let our own children use it today?
 
 If the answer to any question is no, fix first.
+
+## Version Roadmap
+
+### v0.6 Curriculum V2
+
+Refine the product into an English Adventure Companion through better curriculum planning and learning experience design.
+
+### v0.7 AI Companion
+
+Introduce companion intelligence only after the curriculum and adventure experience are stable.
+
+### v0.8 Speaking
+
+Improve active speaking support without turning the product into a scoring-heavy language test.
+
+### v0.9 Parent Dashboard
+
+Help parents understand progress, habits, and weak points with clear family-facing views.
+
+### v1.0 Family Beta
+
+Reach a stable family beta that supports longer real-world use and can be evaluated as a complete daily product.
