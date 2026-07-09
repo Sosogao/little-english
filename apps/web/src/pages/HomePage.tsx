@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 
 import { StatPill } from '@/components/ui/StatPill';
@@ -211,6 +212,7 @@ export function HomePage() {
 }
 
 function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
+  const [selectedNextAdventure, setSelectedNextAdventure] = useState(false);
   const timeline = [
     {
       day: 'Day1',
@@ -263,27 +265,57 @@ function JourneyTimeline({ isDayOneComplete }: { isDayOneComplete: boolean }) {
       </div>
 
       <div className="mt-6 grid gap-3 md:grid-cols-4">
-        {timeline.map((item) => (
-          <div
-            key={`${item.day}-${item.title}`}
-            className={[
+        {timeline.map((item) => {
+          const isNextAdventure =
+            isDayOneComplete && item.day === 'Day2' && item.title === 'Zoo';
+          const cardClassName = [
               'rounded-3xl border p-4',
               item.tone === 'active'
                 ? 'border-meadow-500 bg-meadow-50'
                 : item.tone === 'complete'
                   ? 'border-amber-100 bg-[#fffdf7]'
                   : 'border-slate-100 bg-slate-50',
-            ].join(' ')}
-          >
-            <p className="text-2xl">{item.marker}</p>
-            <p className="mt-3 text-sm font-bold text-slate-500">{item.day}</p>
-            <p className="mt-1 text-xl font-bold text-slate-950">{item.title}</p>
-            <p className="mt-2 text-sm font-semibold text-meadow-700">
-              {item.state}
-            </p>
-          </div>
-        ))}
+              isNextAdventure
+                ? 'text-left transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-meadow-100'
+                : '',
+            ].join(' ');
+          const cardContent = (
+            <>
+              <p className="text-2xl">{item.marker}</p>
+              <p className="mt-3 text-sm font-bold text-slate-500">{item.day}</p>
+              <p className="mt-1 text-xl font-bold text-slate-950">{item.title}</p>
+              <p className="mt-2 text-sm font-semibold text-meadow-700">
+                {item.state}
+              </p>
+            </>
+          );
+
+          return isNextAdventure ? (
+            <button
+              key={`${item.day}-${item.title}`}
+              type="button"
+              className={cardClassName}
+              onClick={() => setSelectedNextAdventure(true)}
+            >
+              {cardContent}
+            </button>
+          ) : (
+            <div key={`${item.day}-${item.title}`} className={cardClassName}>
+              {cardContent}
+            </div>
+          );
+        })}
       </div>
+
+      {selectedNextAdventure ? (
+        <div className="mt-4 rounded-3xl bg-meadow-50 p-5">
+          <p className="text-lg font-bold text-slate-950">Day2 Zoo is next.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Today&apos;s Farm adventure is complete. Come back tomorrow to
+            continue.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }
