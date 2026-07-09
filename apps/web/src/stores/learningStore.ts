@@ -13,13 +13,18 @@ import type {
   ThemePlan,
   VocabularyItem,
 } from '@/types/database';
-import type { LearningFlowProgress, LearningStepId } from '@/types/learning';
+import {
+  adventureFlowSteps,
+  type LearningFlowProgress,
+  type LearningStepId,
+} from '@/types/learning';
 import type { ReviewResult } from '@/services/reviewService';
 import { getReviewIntervalDays } from '@/services/reviewService';
 import { addDaysIsoDate, todayIsoDate } from '@/utils/date';
 import { clampMastery } from '@/utils/mastery';
 
 const firstStepId: LearningStepId = 'warmup';
+const validStepIds = new Set(adventureFlowSteps.map((step) => step.id));
 
 type LearningState = {
   reviewCount: number;
@@ -61,7 +66,17 @@ type LearningState = {
 };
 
 function loadFlowProgress() {
-  return loadJson<LearningFlowProgress[]>(storageKeys.learningFlowProgress, []);
+  return loadJson<LearningFlowProgress[]>(storageKeys.learningFlowProgress, []).map(
+    (progress) => ({
+      ...progress,
+      currentStepId: validStepIds.has(progress.currentStepId)
+        ? progress.currentStepId
+        : firstStepId,
+      completedStepIds: progress.completedStepIds.filter((stepId) =>
+        validStepIds.has(stepId),
+      ),
+    }),
+  );
 }
 
 function saveFlowProgress(flowProgress: LearningFlowProgress[]) {
@@ -380,6 +395,18 @@ function addStepLearningData(
     learnerId: input.learnerId,
     themePlanId: input.themePlan.id,
   };
+  const listenDialogue = input.themePlan.content.conversation.slice(0, 2);
+  const conversationPrompt =
+    input.themePlan.content.conversation.find(
+      (turn) => turn.speaker === 'companion',
+    )?.text ?? `What do you see in ${input.themePlan.theme}?`;
+  const conversationAnswer =
+    input.themePlan.content.conversation
+      .slice()
+      .reverse()
+      .find((turn) => turn.speaker === 'learner')?.text ??
+    input.themePlan.content.usefulSentences[0] ??
+    input.themePlan.content.mission.exampleSentence;
 
   if (input.stepId === 'warmup') {
     learningEvents = appendEvent(
@@ -413,8 +440,8 @@ function addStepLearningData(
     });
   }
 
-  if (input.stepId === 'conversation') {
-    input.themePlan.content.conversation.forEach((turn) => {
+  if (input.stepId === 'listen') {
+    listenDialogue.forEach((turn) => {
       learningMemory = recordSentencePracticed(
         learningMemory,
         input.learnerId,
@@ -431,12 +458,35 @@ function addStepLearningData(
         input.seenAt,
       );
     });
+  }
+
+  if (input.stepId === 'conversation') {
+    learningMemory = recordSentencePracticed(
+      learningMemory,
+      input.learnerId,
+      conversationAnswer,
+      input.seenAt,
+    );
+    learningEvents = appendEvent(
+      learningEvents,
+      {
+        ...eventBase,
+        type: 'sentence_practiced',
+        payload: {
+          stepId: input.stepId,
+          speaker: 'learner',
+          prompt: conversationPrompt,
+          sentence: conversationAnswer,
+        },
+      },
+      input.seenAt,
+    );
     learningEvents = appendEvent(
       learningEvents,
       {
         ...eventBase,
         type: 'conversation_completed',
-        payload: { turnCount: input.themePlan.content.conversation.length },
+        payload: { prompt: conversationPrompt, answer: conversationAnswer },
       },
       input.seenAt,
     );
