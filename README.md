@@ -33,3 +33,27 @@ Do not start coding before reading `CODEX.md`.
 Build a usable local-first prototype first.
 
 AI integration comes after the core learning flow works.
+
+## Web App
+
+The deployable Vite app lives in `apps/web`.
+
+Local commands:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+npm run build
+```
+
+## Vercel Deployment
+
+Use these Vercel project settings:
+
+- Root Directory: `apps/web`
+- Install Command: `npm install`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+See [docs/10_VERCEL_DEPLOYMENT.md](docs/10_VERCEL_DEPLOYMENT.md) for the deployment checklist.

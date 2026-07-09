@@ -1,6 +1,6 @@
 # Journey English Web
 
-Local-first React prototype for Journey English.
+Local-first React + TypeScript + Vite app for Journey English.
 
 ## Scripts
 
@@ -9,4 +9,13 @@ Local-first React prototype for Journey English.
 - `npm run build`
 - `npm run lint`
 
-Milestone 0 and 1 include project bootstrap, mock family data, learner selection, active learner persistence, and a simple home page.
+## Vercel
+
+This app can be deployed from this directory.
+
+- Root Directory: `apps/web`
+- Install Command: `npm install`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+The app is local-first and uses browser `localStorage`; no server runtime or environment variables are required for the current version.
