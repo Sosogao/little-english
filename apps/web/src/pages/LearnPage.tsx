@@ -4,7 +4,12 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { getVoices, speak, stop } from '@/services/voiceService';
+import {
+  getVoices,
+  speak,
+  stop,
+  subscribeToVoiceChanges,
+} from '@/services/voiceService';
 import type { LearningMemory, MemoryReviewItem, ThemePlan } from '@/types/database';
 import type { LearningStepId } from '@/types/learning';
 import type { ReviewResult } from '@/services/reviewService';
@@ -55,15 +60,7 @@ export function LearnPage() {
 
     syncVoices();
 
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.addEventListener('voiceschanged', syncVoices);
-    }
-
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.removeEventListener('voiceschanged', syncVoices);
-      }
-    };
+    return subscribeToVoiceChanges(syncVoices);
   }, []);
 
   if (!activeLearner) {
@@ -535,14 +532,27 @@ function LineList({ items }: { items: string[] }) {
 }
 
 function SpeechButton({ text }: { text: string }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const playText = async () => {
+    setIsLoading(true);
+
+    try {
+      await speak(text);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <button
       type="button"
       aria-label={`Play ${text}`}
-      onClick={() => speak(text)}
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-100 bg-white text-sm shadow-sm transition hover:border-meadow-500"
+      aria-busy={isLoading}
+      disabled={isLoading}
+      onClick={playText}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-100 bg-white text-sm shadow-sm transition hover:border-meadow-500 disabled:cursor-wait disabled:opacity-60"
     >
-      🔊
+      {isLoading ? '...' : '🔊'}
     </button>
   );
 }

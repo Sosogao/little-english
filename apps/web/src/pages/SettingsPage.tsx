@@ -12,6 +12,7 @@ import {
   setVoice,
   speak,
   stop,
+  subscribeToVoiceChanges,
   type VoiceProviderId,
   voiceRateOptions,
   voiceProviderOptions,
@@ -24,21 +25,14 @@ export function SettingsPage() {
   const [apiKey, setApiKey] = useState(getOpenAIApiKey);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(getSelectedVoiceURI);
   const [selectedRate, setSelectedRate] = useState(getSelectedRate);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   useEffect(() => {
     const syncVoices = () => setVoices(getVoices(selectedProvider));
 
     syncVoices();
 
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.addEventListener('voiceschanged', syncVoices);
-    }
-
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.removeEventListener('voiceschanged', syncVoices);
-      }
-    };
+    return subscribeToVoiceChanges(syncVoices);
   }, [selectedProvider]);
 
   const handleProviderChange = (provider: VoiceProviderId) => {
@@ -67,12 +61,18 @@ export function SettingsPage() {
     setOpenAIApiKey(value);
   };
 
-  const testVoice = () => {
-    void speak('Hello. I am ready for today\'s English adventure.', {
-      provider: selectedProvider,
-      rate: selectedRate,
-      voiceURI: selectedVoiceURI,
-    });
+  const testVoice = async () => {
+    setIsTestingVoice(true);
+
+    try {
+      await speak('Hello. I am ready for today\'s English adventure.', {
+        provider: selectedProvider,
+        rate: selectedRate,
+        voiceURI: selectedVoiceURI,
+      });
+    } finally {
+      setIsTestingVoice(false);
+    }
   };
 
   return (
@@ -188,9 +188,10 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={testVoice}
-                className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700"
+                disabled={isTestingVoice}
+                className="rounded-full bg-meadow-500 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-meadow-700 disabled:cursor-wait disabled:opacity-60"
               >
-                Test Voice
+                {isTestingVoice ? 'Testing...' : 'Test Voice'}
               </button>
               <button
                 type="button"

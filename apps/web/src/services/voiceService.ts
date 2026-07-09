@@ -12,6 +12,7 @@ const openAiInstructions =
   'Speak like a warm, friendly English teacher for a child. Use clear pronunciation, gentle energy, and a slightly slower pace.';
 
 let activeAudio: HTMLAudioElement | null = null;
+let activePlaybackDone: (() => void) | null = null;
 
 export type VoiceProviderId = 'browser' | 'openai';
 
@@ -148,8 +149,20 @@ function playAudioSource(source: string) {
   return new Promise<void>((resolve, reject) => {
     activeAudio?.pause();
     activeAudio = new Audio(source);
-    activeAudio.onended = () => resolve();
-    activeAudio.onerror = () => reject(new Error('Audio playback failed.'));
+    const finish = () => {
+      activePlaybackDone = null;
+      activeAudio = null;
+      resolve();
+    };
+    const fail = () => {
+      activePlaybackDone = null;
+      activeAudio = null;
+      reject(new Error('Audio playback failed.'));
+    };
+
+    activePlaybackDone = finish;
+    activeAudio.onended = finish;
+    activeAudio.onerror = fail;
     void activeAudio.play().catch(reject);
   });
 }
@@ -185,19 +198,32 @@ const browserVoiceProvider: VoiceProvider = {
       return;
     }
 
-    window.speechSynthesis.cancel();
     activeAudio?.pause();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voice = findBrowserVoice(options.voiceURI);
+    await new Promise<void>((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voice = findBrowserVoice(options.voiceURI);
+      const finish = () => {
+        activePlaybackDone = null;
+        resolve();
+      };
+      const fail = () => {
+        activePlaybackDone = null;
+        reject(new Error('Browser speech playback failed.'));
+      };
 
-    utterance.lang = voice?.lang ?? 'en-US';
-    utterance.rate = options.rate;
+      window.speechSynthesis.cancel();
+      activePlaybackDone = finish;
+      utterance.lang = voice?.lang ?? 'en-US';
+      utterance.rate = options.rate;
+      utterance.onend = finish;
+      utterance.onerror = fail;
 
-    if (voice) {
-      utterance.voice = voice;
-    }
+      if (voice) {
+        utterance.voice = voice;
+      }
 
-    window.speechSynthesis.speak(utterance);
+      window.speechSynthesis.speak(utterance);
+    });
   },
   stop: () => {
     if (canUseSpeechSynthesis()) {
@@ -289,6 +315,18 @@ export function getVoices(provider: VoiceProviderId = readProvider()) {
   return providers[provider].getVoices();
 }
 
+export function subscribeToVoiceChanges(onChange: () => void) {
+  if (!canUseSpeechSynthesis()) {
+    return () => {};
+  }
+
+  window.speechSynthesis.addEventListener('voiceschanged', onChange);
+
+  return () => {
+    window.speechSynthesis.removeEventListener('voiceschanged', onChange);
+  };
+}
+
 export function setProvider(provider: VoiceProviderId) {
   writeText(voiceStorageKeys.provider, provider);
 
@@ -312,6 +350,8 @@ export function setOpenAIApiKey(apiKey: string) {
 export function stop() {
   activeAudio?.pause();
   activeAudio = null;
+  activePlaybackDone?.();
+  activePlaybackDone = null;
 
   Object.values(providers).forEach((provider) => provider.stop());
 }
