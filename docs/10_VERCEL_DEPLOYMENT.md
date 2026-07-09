@@ -4,7 +4,8 @@
 
 Deploy the Journey English Vite app from `apps/web`.
 
-This guide does not introduce product changes, AI integration, backend services, or new dependencies.
+This guide deploys the Journey English Vite app and its Vercel API route for
+OpenAI voice playback.
 
 ## Recommended Settings
 
@@ -41,10 +42,12 @@ The production build should generate `apps/web/dist`.
 
 ## Runtime Notes
 
-- The app is a static Vite build.
+- The app is a Vite build with a Vercel API route at `/api/tts`.
 - Current data storage is browser `localStorage`.
-- No environment variables are required for `v0.3.0-learning-system`.
-- No server functions, API routes, or AI services are required for this deployment.
+- Browser voice works without environment variables.
+- OpenAI voice requires `OPENAI_API_KEY` in Vercel Project Settings ->
+  Environment Variables.
+- Do not expose the OpenAI API key as a `VITE_` variable.
 
 ## Troubleshooting
 

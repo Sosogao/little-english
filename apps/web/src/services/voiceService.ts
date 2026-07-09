@@ -1,15 +1,11 @@
 const voiceStorageKeys = {
-  apiKey: 'journey_ai.voice.openaiApiKey',
   cachePrefix: 'journey_ai.voice.cache.',
   provider: 'journey_ai.voice.provider',
   rate: 'journey_ai.voice.rate',
   voiceURI: 'journey_ai.voice.voiceURI',
 } as const;
 
-const openAiSpeechModel = 'gpt-4o-mini-tts';
-const openAiTtsEndpoint = 'https://api.openai.com/v1/audio/speech';
-const openAiInstructions =
-  'Speak like a warm, friendly English teacher for a child. Use clear pronunciation, gentle energy, and a slightly slower pace.';
+const openAiTtsEndpoint = '/api/tts';
 
 let activeAudio: HTMLAudioElement | null = null;
 let activePlaybackDone: (() => void) | null = null;
@@ -29,6 +25,7 @@ export type VoiceOption = {
 
 export type SpeakOptions = {
   bypassCache?: boolean;
+  fallbackOnError?: boolean;
   provider?: VoiceProviderId;
   rate?: number;
   voiceURI?: string;
@@ -36,6 +33,7 @@ export type SpeakOptions = {
 
 type ResolvedSpeakOptions = {
   bypassCache: boolean;
+  fallbackOnError: boolean;
   provider: VoiceProviderId;
   rate: number;
   voiceURI: string;
@@ -113,10 +111,6 @@ function readRate() {
   const matchingRate = voiceRateOptions.find((option) => option.value === savedRate);
 
   return matchingRate?.value ?? voiceRateOptions[0].value;
-}
-
-function readOpenAIApiKey() {
-  return readText(voiceStorageKeys.apiKey);
 }
 
 function cacheKey(input: Required<SpeakOptions> & { text: string }) {
@@ -244,12 +238,6 @@ const openAITTSProvider: VoiceProvider = {
   id: 'openai',
   getVoices: () => openAiVoiceOptions,
   speak: async (text, options) => {
-    const apiKey = readOpenAIApiKey();
-
-    if (!apiKey) {
-      throw new Error('Missing OpenAI API key.');
-    }
-
     const key = cacheKey({ ...options, text, provider: 'openai' });
     const cachedAudio = options.bypassCache ? '' : readCachedAudio(key);
 
@@ -260,15 +248,11 @@ const openAITTSProvider: VoiceProvider = {
 
     const response = await fetch(openAiTtsEndpoint, {
       body: JSON.stringify({
-        input: text,
-        instructions: openAiInstructions,
-        model: openAiSpeechModel,
-        response_format: 'mp3',
-        speed: options.rate,
+        rate: options.rate,
+        text,
         voice: options.voiceURI || 'coral',
       }),
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       method: 'POST',
@@ -298,6 +282,7 @@ function getResolvedOptions(options: SpeakOptions): ResolvedSpeakOptions {
 
   return {
     bypassCache: options.bypassCache ?? false,
+    fallbackOnError: options.fallbackOnError ?? true,
     provider,
     rate: options.rate ?? readRate(),
     voiceURI: options.voiceURI ?? readVoiceURI(),
@@ -314,10 +299,6 @@ export function getSelectedVoiceURI() {
 
 export function getSelectedRate() {
   return readRate();
-}
-
-export function getOpenAIApiKey() {
-  return readOpenAIApiKey();
 }
 
 export function getVoices(provider: VoiceProviderId = readProvider()) {
@@ -352,10 +333,6 @@ export function setRate(rate: number) {
   writeText(voiceStorageKeys.rate, String(rate));
 }
 
-export function setOpenAIApiKey(apiKey: string) {
-  writeText(voiceStorageKeys.apiKey, apiKey.trim());
-}
-
 export function stop() {
   activeAudio?.pause();
   activeAudio = null;
@@ -373,13 +350,16 @@ export async function speak(text: string, options: SpeakOptions = {}) {
 
   try {
     await selectedProvider.speak(text, resolvedOptions);
-  } catch {
-    if (resolvedOptions.provider !== 'browser') {
+  } catch (error) {
+    if (resolvedOptions.fallbackOnError && resolvedOptions.provider !== 'browser') {
       await browserVoiceProvider.speak(text, {
         ...resolvedOptions,
         provider: 'browser',
       });
+      return;
     }
+
+    throw error;
   }
 }
 

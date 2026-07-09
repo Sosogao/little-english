@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import {
-  getOpenAIApiKey,
   getSelectedRate,
   getSelectedProvider,
   getSelectedVoiceURI,
   getVoices,
-  setOpenAIApiKey,
   setProvider,
   setRate,
   setVoice,
@@ -22,7 +20,6 @@ export function SettingsPage() {
   const [selectedProvider, setSelectedProvider] =
     useState<VoiceProviderId>(getSelectedProvider);
   const [voices, setVoices] = useState(() => getVoices(getSelectedProvider()));
-  const [apiKey, setApiKey] = useState(getOpenAIApiKey);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(getSelectedVoiceURI);
   const [selectedRate, setSelectedRate] = useState(getSelectedRate);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
@@ -58,28 +55,22 @@ export function SettingsPage() {
     setRate(rate);
   };
 
-  const handleApiKeyChange = (value: string) => {
-    setVoiceError('');
-    setApiKey(value);
-    setOpenAIApiKey(value);
-  };
-
   const testVoice = async () => {
-    if (selectedProvider === 'openai' && apiKey.trim().length === 0) {
-      setVoiceError('Enter an OpenAI API key before testing OpenAI voice.');
-      return;
-    }
-
     setVoiceError('');
     setIsTestingVoice(true);
 
     try {
       await speak('Hello. I am ready for today\'s English adventure.', {
         bypassCache: selectedProvider === 'openai',
+        fallbackOnError: selectedProvider !== 'openai',
         provider: selectedProvider,
         rate: selectedRate,
         voiceURI: selectedVoiceURI,
       });
+    } catch {
+      setVoiceError(
+        'OpenAI voice failed. Check OPENAI_API_KEY in local env or Vercel.',
+      );
     } finally {
       setIsTestingVoice(false);
     }
@@ -95,8 +86,8 @@ export function SettingsPage() {
           Voice Settings
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          Choose browser speech or OpenAI TTS. API keys are stored only in this
-          browser and are never committed to the project.
+          Choose browser speech or OpenAI TTS. OpenAI keys are read from the
+          server environment and are never exposed in the browser.
         </p>
       </div>
 
@@ -125,27 +116,24 @@ export function SettingsPage() {
         </fieldset>
 
         {selectedProvider === 'openai' ? (
-          <label className="mb-6 block">
-            <span className="text-sm font-bold text-slate-700">
+          <div className="mb-6 rounded-3xl bg-[#fffdf7] p-5">
+            <p className="text-sm font-bold text-slate-700">
               OpenAI API Key
-            </span>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(event) => handleApiKeyChange(event.target.value)}
-              placeholder="sk-..."
-              className="mt-2 w-full rounded-2xl border border-amber-100 bg-[#fffdf7] px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-meadow-500 focus:ring-4 focus:ring-meadow-100"
-            />
-            <span className="mt-2 block text-xs font-semibold text-slate-500">
-              Stored locally in this browser. If OpenAI is unavailable, playback
-              falls back to Browser automatically.
-            </span>
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Configure `OPENAI_API_KEY` in `apps/web/.env.local` for local
+              testing and in Vercel Environment Variables for deployment.
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              If OpenAI is unavailable, playback falls back to Browser
+              automatically.
+            </p>
             {voiceError ? (
               <span className="mt-2 block text-sm font-bold text-red-600">
                 {voiceError}
               </span>
             ) : null}
-          </label>
+          </div>
         ) : null}
 
         {voices.length === 0 ? (
