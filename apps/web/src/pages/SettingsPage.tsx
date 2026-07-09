@@ -26,6 +26,7 @@ export function SettingsPage() {
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(getSelectedVoiceURI);
   const [selectedRate, setSelectedRate] = useState(getSelectedRate);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
 
   useEffect(() => {
     const syncVoices = () => setVoices(getVoices(selectedProvider));
@@ -36,6 +37,7 @@ export function SettingsPage() {
   }, [selectedProvider]);
 
   const handleProviderChange = (provider: VoiceProviderId) => {
+    setVoiceError('');
     setSelectedProvider(provider);
     setProvider(provider);
     const providerVoices = getVoices(provider);
@@ -57,15 +59,23 @@ export function SettingsPage() {
   };
 
   const handleApiKeyChange = (value: string) => {
+    setVoiceError('');
     setApiKey(value);
     setOpenAIApiKey(value);
   };
 
   const testVoice = async () => {
+    if (selectedProvider === 'openai' && apiKey.trim().length === 0) {
+      setVoiceError('Enter an OpenAI API key before testing OpenAI voice.');
+      return;
+    }
+
+    setVoiceError('');
     setIsTestingVoice(true);
 
     try {
       await speak('Hello. I am ready for today\'s English adventure.', {
+        bypassCache: selectedProvider === 'openai',
         provider: selectedProvider,
         rate: selectedRate,
         voiceURI: selectedVoiceURI,
@@ -130,6 +140,11 @@ export function SettingsPage() {
               Stored locally in this browser. If OpenAI is unavailable, playback
               falls back to Browser automatically.
             </span>
+            {voiceError ? (
+              <span className="mt-2 block text-sm font-bold text-red-600">
+                {voiceError}
+              </span>
+            ) : null}
           </label>
         ) : null}
 

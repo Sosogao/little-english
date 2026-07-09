@@ -28,15 +28,23 @@ export type VoiceOption = {
 };
 
 export type SpeakOptions = {
+  bypassCache?: boolean;
   provider?: VoiceProviderId;
   rate?: number;
   voiceURI?: string;
 };
 
+type ResolvedSpeakOptions = {
+  bypassCache: boolean;
+  provider: VoiceProviderId;
+  rate: number;
+  voiceURI: string;
+};
+
 export type VoiceProvider = {
   id: VoiceProviderId;
   getVoices: () => VoiceOption[];
-  speak: (text: string, options: Required<SpeakOptions>) => Promise<void>;
+  speak: (text: string, options: ResolvedSpeakOptions) => Promise<void>;
   stop: () => void;
 };
 
@@ -243,7 +251,7 @@ const openAITTSProvider: VoiceProvider = {
     }
 
     const key = cacheKey({ ...options, text, provider: 'openai' });
-    const cachedAudio = readCachedAudio(key);
+    const cachedAudio = options.bypassCache ? '' : readCachedAudio(key);
 
     if (cachedAudio) {
       await playAudioSource(cachedAudio);
@@ -285,10 +293,11 @@ const providers: Record<VoiceProviderId, VoiceProvider> = {
   openai: openAITTSProvider,
 };
 
-function getResolvedOptions(options: SpeakOptions): Required<SpeakOptions> {
+function getResolvedOptions(options: SpeakOptions): ResolvedSpeakOptions {
   const provider = options.provider ?? readProvider();
 
   return {
+    bypassCache: options.bypassCache ?? false,
     provider,
     rate: options.rate ?? readRate(),
     voiceURI: options.voiceURI ?? readVoiceURI(),
