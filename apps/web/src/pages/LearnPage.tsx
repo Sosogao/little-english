@@ -3,8 +3,10 @@ import { Link, Navigate } from 'react-router-dom';
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
 import { useThemeStore } from '@/stores/themeStore';
-import type { ThemePlan } from '@/types/database';
+import type { LearningMemory, MemoryReviewItem, ThemePlan } from '@/types/database';
 import type { LearningStepId } from '@/types/learning';
+import type { ReviewResult } from '@/services/reviewService';
+import { todayIsoDate } from '@/utils/date';
 import type { ReactNode } from 'react';
 
 const learningSteps: Array<{ id: LearningStepId; title: string }> = [
@@ -36,7 +38,10 @@ export function LearnPage() {
   const completeLearningStep = useLearningStore(
     (state) => state.completeLearningStep,
   );
+  const reviewMemoryItem = useLearningStore((state) => state.reviewMemoryItem);
   const flowProgress = useLearningStore((state) => state.flowProgress);
+  const reviewItems = useLearningStore((state) => state.reviewItems);
+  const learningMemory = useLearningStore((state) => state.learningMemory);
 
   if (!activeLearner) {
     return <Navigate to="/learners" replace />;
@@ -58,6 +63,12 @@ export function LearnPage() {
   const savedStepIndex = getStepIndex(progress.currentStepId);
   const currentStepIndex = savedStepIndex === -1 ? 0 : savedStepIndex;
   const currentStep = learningSteps[currentStepIndex] ?? learningSteps[0];
+  const dueReviewItems = reviewItems
+    .filter(
+      (item) =>
+        item.learnerId === activeLearner.id && item.dueDate <= todayIsoDate(),
+    )
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const completedCount = progress.completedStepIds.length;
   const progressPercent = Math.round((completedCount / learningSteps.length) * 100);
   const isFirstStep = currentStepIndex === 0;
@@ -160,6 +171,13 @@ export function LearnPage() {
           <StepContent
             activeLearnerName={activeLearner.displayName}
             companionName={companion?.name ?? 'Your companion'}
+            dueReviewItems={dueReviewItems}
+            getMemoryForReviewItem={(reviewItem) =>
+              learningMemory.find((memory) => memory.id === reviewItem.memoryId)
+            }
+            onReview={(reviewItemId, result) =>
+              reviewMemoryItem(activeLearner.id, reviewItemId, result)
+            }
             stepId={currentStep.id}
             theme={todayTheme}
           />
@@ -190,6 +208,11 @@ export function LearnPage() {
 type StepContentProps = {
   activeLearnerName: string;
   companionName: string;
+  dueReviewItems: MemoryReviewItem[];
+  getMemoryForReviewItem: (
+    reviewItem: MemoryReviewItem,
+  ) => LearningMemory | undefined;
+  onReview: (reviewItemId: string, result: ReviewResult) => void;
   stepId: LearningStepId;
   theme: ThemePlan;
 };
@@ -197,6 +220,9 @@ type StepContentProps = {
 function StepContent({
   activeLearnerName,
   companionName,
+  dueReviewItems,
+  getMemoryForReviewItem,
+  onReview,
   stepId,
   theme,
 }: StepContentProps) {
@@ -334,20 +360,15 @@ function StepContent({
     return (
       <LearningPanel
         eyebrow="Memory Garden"
-        title="Review what appeared today"
-        description="This is a simple local review preview. The full review engine comes later."
+        title="Review what is due"
+        description="Choose how the learner remembered each item. The next review date is saved locally."
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {theme.content.vocabulary.map((item) => (
-            <div key={item.id} className="rounded-3xl border border-amber-100 p-4">
-              <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
-                Remember
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{item.word}</p>
-              <p className="mt-1 text-sm text-slate-500">{item.meaningZh}</p>
-            </div>
-          ))}
-        </div>
+        <MemoryGardenReview
+          dueReviewItems={dueReviewItems}
+          getMemoryForReviewItem={getMemoryForReviewItem}
+          onReview={onReview}
+          theme={theme}
+        />
       </LearningPanel>
     );
   }
@@ -432,3 +453,104 @@ function LineList({ items }: { items: string[] }) {
     </div>
   );
 }
+
+type MemoryGardenReviewProps = {
+  dueReviewItems: MemoryReviewItem[];
+  getMemoryForReviewItem: StepContentProps['getMemoryForReviewItem'];
+  onReview: (reviewItemId: string, result: ReviewResult) => void;
+  theme: ThemePlan;
+};
+
+function MemoryGardenReview({
+  dueReviewItems,
+  getMemoryForReviewItem,
+  onReview,
+  theme,
+}: MemoryGardenReviewProps) {
+  if (dueReviewItems.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-3xl bg-meadow-50 p-5">
+          <p className="text-lg font-bold text-slate-950">Nothing is due now.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Vocabulary review cards appear here after the learner completes
+            Vocabulary once.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {theme.content.vocabulary.map((item) => (
+            <div key={item.id} className="rounded-3xl border border-amber-100 p-4">
+              <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                Today&apos;s word
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-950">{item.word}</p>
+              <p className="mt-1 text-sm text-slate-500">{item.meaningZh}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {dueReviewItems.map((reviewItem) => {
+        const memory = getMemoryForReviewItem(reviewItem);
+
+        if (!memory) {
+          return null;
+        }
+
+        return (
+          <div key={reviewItem.id} className="rounded-3xl bg-[#fffdf7] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Due {reviewItem.dueDate}
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-950">
+                  {memory.content}
+                </p>
+                {memory.meaningZh ? (
+                  <p className="mt-1 text-sm font-semibold text-meadow-700">
+                    {memory.meaningZh}
+                  </p>
+                ) : null}
+                {memory.examples[0] ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {memory.examples[0]}
+                  </p>
+                ) : null}
+              </div>
+              <div className="rounded-2xl bg-white px-4 py-3 text-right">
+                <p className="text-xs font-semibold text-slate-500">Mastery</p>
+                <p className="text-2xl font-bold text-slate-950">
+                  {memory.mastery}
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-2 sm:grid-cols-4">
+              {reviewButtons.map((button) => (
+                <button
+                  key={button.result}
+                  type="button"
+                  onClick={() => onReview(reviewItem.id, button.result)}
+                  className="rounded-2xl border border-amber-100 bg-white px-3 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
+                >
+                  {button.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const reviewButtons: Array<{ result: ReviewResult; label: string }> = [
+  { result: 'again', label: 'Again' },
+  { result: 'hard', label: 'Hard' },
+  { result: 'good', label: 'Good' },
+  { result: 'easy', label: 'Easy' },
+];
