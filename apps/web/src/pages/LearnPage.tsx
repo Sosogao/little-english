@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useLearnerStore } from '@/stores/learnerStore';
 import { useLearningStore } from '@/stores/learningStore';
@@ -22,7 +22,16 @@ function getStepIndex(stepId: LearningStepId) {
   return adventureFlowSteps.findIndex((step) => step.id === stepId);
 }
 
+function getRequestedStep(search: string): LearningStepId | undefined {
+  const step = new URLSearchParams(search).get('step');
+
+  return adventureFlowSteps.find(
+    (flowStep) => flowStep.id === step,
+  )?.id;
+}
+
 export function LearnPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const activeLearner = useLearnerStore((state) => state.getActiveLearner());
   const getCompanionForLearner = useLearnerStore(
@@ -71,7 +80,9 @@ export function LearnPage() {
         savedProgress.themePlanId === todayTheme.id &&
         savedProgress.learnerId === activeLearner.id,
     ) ?? getFlowProgress(todayTheme.id, activeLearner.id);
-  const savedStepIndex = getStepIndex(progress.currentStepId);
+  const requestedStepId = getRequestedStep(location.search);
+  const visibleStepId = requestedStepId ?? progress.currentStepId;
+  const savedStepIndex = getStepIndex(visibleStepId);
   const currentStepIndex = savedStepIndex === -1 ? 0 : savedStepIndex;
   const currentStep = adventureFlowSteps[currentStepIndex] ?? adventureFlowSteps[0];
   const dueReviewItems = reviewItems
@@ -93,6 +104,10 @@ export function LearnPage() {
 
   const goToStep = (stepId: LearningStepId) => {
     setCurrentStep(todayTheme.id, activeLearner.id, stepId);
+
+    if (requestedStepId) {
+      navigate('/learn', { replace: true });
+    }
   };
 
   const goNext = () => {

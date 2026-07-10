@@ -11,6 +11,7 @@ const growthMetrics = [
   { label: 'Reading', field: 'readingLevel' },
   { label: 'Vocabulary', field: 'vocabularyLevel' },
 ] as const;
+const challengeDays = [7, 14, 21, 29] as const;
 
 function getSummerGreeting() {
   const hour = new Date().getHours();
@@ -24,6 +25,31 @@ function starRating(score = 0) {
   const filled = Math.max(1, Math.min(5, Math.round(score / 20)));
 
   return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+}
+
+function getChallengePreview(dayIndex: number) {
+  const nextChallengeDay = challengeDays.find((day) => day >= dayIndex);
+
+  if (!nextChallengeDay) {
+    return {
+      title: 'Journey Challenges Completed',
+      detail: 'All planned Explorer Challenges have been reached in this journey.',
+    };
+  }
+
+  if (nextChallengeDay === dayIndex) {
+    return {
+      title: 'Today is Challenge Day',
+      detail: `Day ${nextChallengeDay} is ready as a gentle Explorer Challenge preview.`,
+    };
+  }
+
+  const daysUntil = nextChallengeDay - dayIndex;
+
+  return {
+    title: `Explorer Challenge in ${daysUntil} ${daysUntil === 1 ? 'day' : 'days'}`,
+    detail: `Next preview: Day ${nextChallengeDay} Explorer Challenge.`,
+  };
 }
 
 export function HomePage() {
@@ -54,7 +80,7 @@ export function HomePage() {
   }
 
   const companion = getCompanionForLearner(activeLearner.id);
-  const companionName = companion?.name === 'Summer' ? companion.name : 'Summer';
+  const companionName = companion?.name ?? 'Summer';
   const profile = getProfileForLearner(activeLearner.id);
   const todayTheme = getTodayThemeForLearner(activeLearner.id);
   const journeyThemes = getThemesForLearner(activeLearner.id);
@@ -135,7 +161,8 @@ export function HomePage() {
     navigate('/learn');
   };
 
-  const nextChallengeDay = Math.min(maxCompletedDayIndex + 2, journeyThemes.length);
+  const journeyPosition = Math.max(todayTheme.dayIndex, maxCompletedDayIndex);
+  const challengePreview = getChallengePreview(journeyPosition);
   const explorerLevel = Math.max(1, Math.ceil(activeLearner.totalLearningDays / 2));
 
   return (
@@ -254,7 +281,7 @@ export function HomePage() {
             local to this learner.
           </p>
           <Link
-            to="/learn"
+            to="/learn?step=memory"
             className="mt-6 inline-flex rounded-full border border-amber-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-meadow-500 hover:text-meadow-700"
           >
             Visit Memory Garden
@@ -266,7 +293,7 @@ export function HomePage() {
             Adventure Challenge
           </p>
           <h2 className="mt-2 text-3xl font-bold text-slate-950">
-            Explorer Challenge in 2 days
+            {challengePreview.title}
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             After more adventures, Summer will invite {activeLearner.displayName}
@@ -274,8 +301,7 @@ export function HomePage() {
             vocabulary stars.
           </p>
           <p className="mt-5 rounded-3xl bg-[#fffdf7] px-4 py-3 text-sm font-bold text-slate-700">
-            Next preview: Day {nextChallengeDay || todayTheme.dayIndex} Explorer
-            Challenge
+            {challengePreview.detail}
           </p>
         </section>
       </div>
