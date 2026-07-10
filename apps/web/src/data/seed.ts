@@ -3,6 +3,7 @@ import type {
   Family,
   Learner,
   LearnerProfile,
+  ThemeContent,
   ThemePlan,
 } from '@/types/database';
 import { loadJson, saveJson, storageKeys } from '@/services/storageService';
@@ -185,6 +186,7 @@ export const mockProfiles: LearnerProfile[] = [
 ];
 
 type CurriculumWord = {
+  emoji: string;
   word: string;
   meaningZh: string;
   difficulty?: 1 | 2 | 3 | 4 | 5;
@@ -192,466 +194,574 @@ type CurriculumWord = {
 
 type CurriculumDay = {
   dayIndex: number;
+  kind: 'adventure' | 'review' | 'challenge' | 'graduation';
   theme: string;
   title: string;
   adventureTitle: string;
   placePhrase: string;
   keySentence: string;
-  missionPrompt: string;
+  missionInstruction: string;
+  missionSentence: string;
   vocabulary: CurriculumWord[];
 };
 
 const curriculumDays: CurriculumDay[] = [
   {
     dayIndex: 1,
+    kind: 'adventure',
     theme: 'Farm',
     title: 'At the Farm',
     adventureTitle: "Let's Visit the Farm",
     placePhrase: 'on the farm',
     keySentence: 'I see a cow.',
-    missionPrompt: 'What animal do you like?',
+    missionInstruction: 'Tell Gordon one farm animal you like.',
+    missionSentence: 'I like cows.',
     vocabulary: [
-      { word: 'cow', meaningZh: '奶牛', difficulty: 1 },
-      { word: 'horse', meaningZh: '马', difficulty: 2 },
-      { word: 'duck', meaningZh: '鸭子', difficulty: 1 },
-      { word: 'pig', meaningZh: '猪', difficulty: 1 },
+      { emoji: '🐄', word: 'cow', meaningZh: '奶牛', difficulty: 1 },
+      { emoji: '🐴', word: 'horse', meaningZh: '马', difficulty: 2 },
+      { emoji: '🦆', word: 'duck', meaningZh: '鸭子', difficulty: 1 },
+      { emoji: '🐷', word: 'pig', meaningZh: '猪', difficulty: 1 },
     ],
   },
   {
     dayIndex: 2,
+    kind: 'adventure',
     theme: 'Zoo',
     title: 'At the Zoo',
     adventureTitle: "Let's Visit the Zoo",
     placePhrase: 'at the zoo',
     keySentence: 'I like the lion.',
-    missionPrompt: 'What zoo animal do you like?',
+    missionInstruction: 'Tell Vicky one zoo animal you like.',
+    missionSentence: 'I like pandas.',
     vocabulary: [
-      { word: 'lion', meaningZh: '狮子', difficulty: 2 },
-      { word: 'monkey', meaningZh: '猴子', difficulty: 2 },
-      { word: 'elephant', meaningZh: '大象', difficulty: 2 },
-      { word: 'panda', meaningZh: '熊猫', difficulty: 1 },
+      { emoji: '🦁', word: 'lion', meaningZh: '狮子', difficulty: 2 },
+      { emoji: '🐒', word: 'monkey', meaningZh: '猴子', difficulty: 2 },
+      { emoji: '🐘', word: 'elephant', meaningZh: '大象', difficulty: 2 },
+      { emoji: '🐼', word: 'panda', meaningZh: '熊猫', difficulty: 1 },
     ],
   },
   {
     dayIndex: 3,
+    kind: 'adventure',
     theme: 'Birthday Party',
     title: 'Birthday Party',
     adventureTitle: 'Plan a Birthday Party',
     placePhrase: 'at the party',
     keySentence: 'Happy birthday to you.',
-    missionPrompt: 'Whose birthday is next?',
+    missionInstruction: 'Say a birthday sentence to someone at home.',
+    missionSentence: 'Happy birthday to you.',
     vocabulary: [
-      { word: 'cake', meaningZh: '蛋糕' },
-      { word: 'candle', meaningZh: '蜡烛' },
-      { word: 'gift', meaningZh: '礼物' },
-      { word: 'party', meaningZh: '派对' },
+      { emoji: '🎂', word: 'cake', meaningZh: '蛋糕' },
+      { emoji: '🕯️', word: 'candle', meaningZh: '蜡烛' },
+      { emoji: '🎁', word: 'gift', meaningZh: '礼物' },
+      { emoji: '🎈', word: 'party', meaningZh: '派对' },
     ],
   },
   {
     dayIndex: 4,
+    kind: 'adventure',
     theme: 'School',
     title: 'At School',
     adventureTitle: 'A Day at School',
     placePhrase: 'at school',
     keySentence: 'I have a book.',
-    missionPrompt: 'What do you have in your bag?',
+    missionInstruction: 'Show one thing in your bag and say its English name.',
+    missionSentence: 'I have a book.',
     vocabulary: [
-      { word: 'book', meaningZh: '书' },
-      { word: 'pencil', meaningZh: '铅笔' },
-      { word: 'desk', meaningZh: '书桌' },
-      { word: 'teacher', meaningZh: '老师' },
+      { emoji: '📘', word: 'book', meaningZh: '书' },
+      { emoji: '✏️', word: 'pencil', meaningZh: '铅笔' },
+      { emoji: '🪑', word: 'desk', meaningZh: '书桌' },
+      { emoji: '👩‍🏫', word: 'teacher', meaningZh: '老师' },
     ],
   },
   {
     dayIndex: 5,
+    kind: 'adventure',
     theme: 'Family',
     title: 'My Family',
     adventureTitle: 'Meet My Family',
     placePhrase: 'at home',
     keySentence: 'This is my family.',
-    missionPrompt: 'Who is in our family?',
+    missionInstruction: 'Point to a family photo and say one family sentence.',
+    missionSentence: 'This is my family.',
     vocabulary: [
-      { word: 'mother', meaningZh: '妈妈' },
-      { word: 'father', meaningZh: '爸爸' },
-      { word: 'sister', meaningZh: '姐妹' },
-      { word: 'brother', meaningZh: '兄弟' },
+      { emoji: '👩', word: 'mother', meaningZh: '妈妈' },
+      { emoji: '👨', word: 'father', meaningZh: '爸爸' },
+      { emoji: '👧', word: 'sister', meaningZh: '姐妹' },
+      { emoji: '👦', word: 'brother', meaningZh: '兄弟' },
     ],
   },
   {
     dayIndex: 6,
+    kind: 'review',
+    theme: 'Week 1 Review',
+    title: 'Review Adventure',
+    adventureTitle: 'Water Week 1 Memories',
+    placePhrase: 'in Summer’s review garden',
+    keySentence: 'I remember my words.',
+    missionInstruction: 'Tell Gordon two words from Farm or Zoo.',
+    missionSentence: 'I remember cow and panda.',
+    vocabulary: [
+      { emoji: '🐄', word: 'cow', meaningZh: '奶牛' },
+      { emoji: '🐼', word: 'panda', meaningZh: '熊猫' },
+      { emoji: '📘', word: 'book', meaningZh: '书' },
+      { emoji: '👨', word: 'father', meaningZh: '爸爸' },
+    ],
+  },
+  {
+    dayIndex: 7,
+    kind: 'challenge',
+    theme: 'Week 1 Challenge',
+    title: 'Adventure Challenge',
+    adventureTitle: 'Explorer Challenge 1',
+    placePhrase: 'at Summer’s challenge gate',
+    keySentence: 'I can try the challenge.',
+    missionInstruction: 'Say one brave English sentence to Vicky.',
+    missionSentence: 'I can try.',
+    vocabulary: [
+      { emoji: '⭐', word: 'try', meaningZh: '尝试' },
+      { emoji: '🗣️', word: 'speak', meaningZh: '说' },
+      { emoji: '👂', word: 'listen', meaningZh: '听' },
+      { emoji: '🌟', word: 'brave', meaningZh: '勇敢的' },
+    ],
+  },
+  {
+    dayIndex: 8,
+    kind: 'adventure',
     theme: 'Breakfast',
     title: 'Breakfast Time',
     adventureTitle: 'Make Breakfast',
     placePhrase: 'at breakfast',
     keySentence: 'I want some milk.',
-    missionPrompt: 'What do you want for breakfast?',
+    missionInstruction: 'At breakfast, tell someone what you want.',
+    missionSentence: 'I want some milk.',
     vocabulary: [
-      { word: 'milk', meaningZh: '牛奶' },
-      { word: 'bread', meaningZh: '面包' },
-      { word: 'egg', meaningZh: '鸡蛋' },
-      { word: 'banana', meaningZh: '香蕉' },
+      { emoji: '🥛', word: 'milk', meaningZh: '牛奶' },
+      { emoji: '🍞', word: 'bread', meaningZh: '面包' },
+      { emoji: '🥚', word: 'egg', meaningZh: '鸡蛋' },
+      { emoji: '🍌', word: 'banana', meaningZh: '香蕉' },
     ],
   },
   {
-    dayIndex: 7,
+    dayIndex: 9,
+    kind: 'adventure',
     theme: 'Fruits',
     title: 'Fruit Stand',
     adventureTitle: 'Choose Fresh Fruit',
     placePhrase: 'at the fruit stand',
     keySentence: 'I like apples.',
-    missionPrompt: 'What fruit do you like?',
+    missionInstruction: 'Tell Gordon one fruit you like.',
+    missionSentence: 'I like apples.',
     vocabulary: [
-      { word: 'apple', meaningZh: '苹果' },
-      { word: 'orange', meaningZh: '橙子' },
-      { word: 'grape', meaningZh: '葡萄' },
-      { word: 'pear', meaningZh: '梨' },
+      { emoji: '🍎', word: 'apple', meaningZh: '苹果' },
+      { emoji: '🍊', word: 'orange', meaningZh: '橙子' },
+      { emoji: '🍇', word: 'grape', meaningZh: '葡萄' },
+      { emoji: '🍐', word: 'pear', meaningZh: '梨' },
     ],
   },
   {
-    dayIndex: 8,
+    dayIndex: 10,
+    kind: 'adventure',
     theme: 'Weather',
     title: 'Weather Watch',
     adventureTitle: 'Check the Weather',
     placePhrase: 'outside',
     keySentence: 'It is sunny today.',
-    missionPrompt: 'How is the weather today?',
+    missionInstruction: 'Look outside and tell Vicky the weather.',
+    missionSentence: 'It is sunny today.',
     vocabulary: [
-      { word: 'sunny', meaningZh: '晴朗的' },
-      { word: 'rainy', meaningZh: '下雨的' },
-      { word: 'windy', meaningZh: '有风的' },
-      { word: 'cloudy', meaningZh: '多云的' },
+      { emoji: '☀️', word: 'sunny', meaningZh: '晴朗的' },
+      { emoji: '🌧️', word: 'rainy', meaningZh: '下雨的' },
+      { emoji: '💨', word: 'windy', meaningZh: '有风的' },
+      { emoji: '☁️', word: 'cloudy', meaningZh: '多云的' },
     ],
   },
   {
-    dayIndex: 9,
+    dayIndex: 11,
+    kind: 'adventure',
     theme: 'Colors',
     title: 'Color Hunt',
     adventureTitle: 'Find Colors',
     placePhrase: 'in the room',
     keySentence: 'I see something red.',
-    missionPrompt: 'What color can you see?',
+    missionInstruction: 'Count five blue things in your room.',
+    missionSentence: 'I see five blue things.',
     vocabulary: [
-      { word: 'red', meaningZh: '红色' },
-      { word: 'blue', meaningZh: '蓝色' },
-      { word: 'green', meaningZh: '绿色' },
-      { word: 'yellow', meaningZh: '黄色' },
+      { emoji: '🔴', word: 'red', meaningZh: '红色' },
+      { emoji: '🔵', word: 'blue', meaningZh: '蓝色' },
+      { emoji: '🟢', word: 'green', meaningZh: '绿色' },
+      { emoji: '🟡', word: 'yellow', meaningZh: '黄色' },
     ],
   },
   {
-    dayIndex: 10,
+    dayIndex: 12,
+    kind: 'adventure',
     theme: 'Numbers',
     title: 'Number Hunt',
     adventureTitle: 'Count Together',
     placePhrase: 'around us',
     keySentence: 'I can count to ten.',
-    missionPrompt: 'How many toys can you count?',
+    missionInstruction: 'Count ten small things with someone at home.',
+    missionSentence: 'I can count to ten.',
     vocabulary: [
-      { word: 'one', meaningZh: '一' },
-      { word: 'two', meaningZh: '二' },
-      { word: 'three', meaningZh: '三' },
-      { word: 'ten', meaningZh: '十' },
-    ],
-  },
-  {
-    dayIndex: 11,
-    theme: 'Clothes',
-    title: 'Getting Dressed',
-    adventureTitle: 'Pick Clothes',
-    placePhrase: 'by the closet',
-    keySentence: 'I wear a shirt.',
-    missionPrompt: 'What are you wearing?',
-    vocabulary: [
-      { word: 'shirt', meaningZh: '衬衫' },
-      { word: 'pants', meaningZh: '裤子' },
-      { word: 'shoes', meaningZh: '鞋子' },
-      { word: 'hat', meaningZh: '帽子' },
-    ],
-  },
-  {
-    dayIndex: 12,
-    theme: 'Toys',
-    title: 'Toy Box',
-    adventureTitle: 'Open the Toy Box',
-    placePhrase: 'near the toy box',
-    keySentence: 'This is my ball.',
-    missionPrompt: 'What toy do you like?',
-    vocabulary: [
-      { word: 'ball', meaningZh: '球' },
-      { word: 'doll', meaningZh: '娃娃' },
-      { word: 'car', meaningZh: '小汽车' },
-      { word: 'block', meaningZh: '积木' },
+      { emoji: '1️⃣', word: 'one', meaningZh: '一' },
+      { emoji: '2️⃣', word: 'two', meaningZh: '二' },
+      { emoji: '3️⃣', word: 'three', meaningZh: '三' },
+      { emoji: '🔟', word: 'ten', meaningZh: '十' },
     ],
   },
   {
     dayIndex: 13,
-    theme: 'Sports',
-    title: 'Sports Day',
-    adventureTitle: 'Play a Sport',
-    placePhrase: 'on the field',
-    keySentence: 'I can run fast.',
-    missionPrompt: 'What sport can you play?',
+    kind: 'review',
+    theme: 'Week 2 Review',
+    title: 'Review Adventure',
+    adventureTitle: 'Water Week 2 Memories',
+    placePhrase: 'beside Summer’s fruit basket',
+    keySentence: 'I remember food and colors.',
+    missionInstruction: 'Say one food word and one color word at home.',
+    missionSentence: 'I like apples and blue.',
     vocabulary: [
-      { word: 'run', meaningZh: '跑' },
-      { word: 'jump', meaningZh: '跳' },
-      { word: 'swim', meaningZh: '游泳' },
-      { word: 'kick', meaningZh: '踢' },
+      { emoji: '🍎', word: 'apple', meaningZh: '苹果' },
+      { emoji: '🥛', word: 'milk', meaningZh: '牛奶' },
+      { emoji: '🔵', word: 'blue', meaningZh: '蓝色' },
+      { emoji: '☀️', word: 'sunny', meaningZh: '晴朗的' },
     ],
   },
   {
     dayIndex: 14,
+    kind: 'challenge',
+    theme: 'Week 2 Challenge',
+    title: 'Adventure Challenge',
+    adventureTitle: 'Explorer Challenge 2',
+    placePhrase: 'at Summer’s star path',
+    keySentence: 'I can answer in English.',
+    missionInstruction: 'Ask Vicky one English question from this week.',
+    missionSentence: 'What fruit do you like?',
+    vocabulary: [
+      { emoji: '❓', word: 'question', meaningZh: '问题' },
+      { emoji: '✅', word: 'answer', meaningZh: '回答' },
+      { emoji: '⭐', word: 'star', meaningZh: '星星' },
+      { emoji: '🧠', word: 'remember', meaningZh: '记得' },
+    ],
+  },
+  {
+    dayIndex: 15,
+    kind: 'adventure',
     theme: 'Park',
     title: 'At the Park',
     adventureTitle: 'Walk in the Park',
     placePhrase: 'at the park',
     keySentence: 'I play on the slide.',
-    missionPrompt: 'What can you do at the park?',
+    missionInstruction: 'Tell someone one thing you can do at a park.',
+    missionSentence: 'I play on the slide.',
     vocabulary: [
-      { word: 'slide', meaningZh: '滑梯' },
-      { word: 'swing', meaningZh: '秋千' },
-      { word: 'tree', meaningZh: '树' },
-      { word: 'bench', meaningZh: '长椅' },
+      { emoji: '🛝', word: 'slide', meaningZh: '滑梯' },
+      { emoji: '🌳', word: 'tree', meaningZh: '树' },
+      { emoji: '🪁', word: 'kite', meaningZh: '风筝' },
+      { emoji: '🚶', word: 'walk', meaningZh: '走路' },
     ],
   },
   {
-    dayIndex: 15,
+    dayIndex: 16,
+    kind: 'adventure',
     theme: 'Beach',
     title: 'At the Beach',
     adventureTitle: 'Build a Sandcastle',
     placePhrase: 'at the beach',
     keySentence: 'I see the sea.',
-    missionPrompt: 'What can you see at the beach?',
+    missionInstruction: 'Draw a beach and say one beach sentence.',
+    missionSentence: 'I see the sea.',
     vocabulary: [
-      { word: 'sea', meaningZh: '海' },
-      { word: 'sand', meaningZh: '沙子' },
-      { word: 'shell', meaningZh: '贝壳' },
-      { word: 'wave', meaningZh: '海浪' },
+      { emoji: '🌊', word: 'sea', meaningZh: '海' },
+      { emoji: '🏖️', word: 'sand', meaningZh: '沙子' },
+      { emoji: '🐚', word: 'shell', meaningZh: '贝壳' },
+      { emoji: '☀️', word: 'sun', meaningZh: '太阳' },
     ],
   },
   {
-    dayIndex: 16,
+    dayIndex: 17,
+    kind: 'adventure',
     theme: 'Supermarket',
     title: 'At the Supermarket',
     adventureTitle: 'Shop for Food',
     placePhrase: 'at the supermarket',
     keySentence: 'I need some rice.',
-    missionPrompt: 'What do we need to buy?',
+    missionInstruction: 'Help name one thing on the shopping list.',
+    missionSentence: 'I need some rice.',
     vocabulary: [
-      { word: 'rice', meaningZh: '米饭' },
-      { word: 'juice', meaningZh: '果汁' },
-      { word: 'basket', meaningZh: '篮子' },
-      { word: 'money', meaningZh: '钱' },
+      { emoji: '🍚', word: 'rice', meaningZh: '米饭' },
+      { emoji: '🧃', word: 'juice', meaningZh: '果汁' },
+      { emoji: '🧺', word: 'basket', meaningZh: '篮子' },
+      { emoji: '💰', word: 'money', meaningZh: '钱' },
     ],
   },
   {
-    dayIndex: 17,
+    dayIndex: 18,
+    kind: 'adventure',
     theme: 'Restaurant',
     title: 'At the Restaurant',
     adventureTitle: 'Order Lunch',
     placePhrase: 'at the restaurant',
     keySentence: 'I want noodles, please.',
-    missionPrompt: 'What would you like to eat?',
+    missionInstruction: 'At dinner, politely ask for one food.',
+    missionSentence: 'I want noodles, please.',
     vocabulary: [
-      { word: 'menu', meaningZh: '菜单' },
-      { word: 'noodles', meaningZh: '面条' },
-      { word: 'soup', meaningZh: '汤' },
-      { word: 'water', meaningZh: '水' },
+      { emoji: '📋', word: 'menu', meaningZh: '菜单' },
+      { emoji: '🍜', word: 'noodles', meaningZh: '面条' },
+      { emoji: '🥣', word: 'soup', meaningZh: '汤' },
+      { emoji: '💧', word: 'water', meaningZh: '水' },
     ],
   },
   {
-    dayIndex: 18,
+    dayIndex: 19,
+    kind: 'adventure',
     theme: 'Doctor',
     title: 'At the Doctor',
     adventureTitle: 'Visit the Doctor',
     placePhrase: 'at the clinic',
     keySentence: 'My head hurts.',
-    missionPrompt: 'How do you feel today?',
+    missionInstruction: 'Tell someone how you feel today.',
+    missionSentence: 'I feel good today.',
     vocabulary: [
-      { word: 'doctor', meaningZh: '医生' },
-      { word: 'head', meaningZh: '头' },
-      { word: 'hand', meaningZh: '手' },
-      { word: 'tired', meaningZh: '累的' },
-    ],
-  },
-  {
-    dayIndex: 19,
-    theme: 'Travel',
-    title: 'Travel Day',
-    adventureTitle: 'Pack a Bag',
-    placePhrase: 'on a trip',
-    keySentence: 'I pack my bag.',
-    missionPrompt: 'What do you pack for a trip?',
-    vocabulary: [
-      { word: 'bag', meaningZh: '包' },
-      { word: 'map', meaningZh: '地图' },
-      { word: 'ticket', meaningZh: '票' },
-      { word: 'camera', meaningZh: '相机' },
+      { emoji: '🧑‍⚕️', word: 'doctor', meaningZh: '医生' },
+      { emoji: '🙂', word: 'feel', meaningZh: '感觉' },
+      { emoji: '🤕', word: 'head', meaningZh: '头' },
+      { emoji: '😴', word: 'tired', meaningZh: '累的' },
     ],
   },
   {
     dayIndex: 20,
-    theme: 'Hotel',
-    title: 'At the Hotel',
-    adventureTitle: 'Find Our Room',
-    placePhrase: 'at the hotel',
-    keySentence: 'This is our room.',
-    missionPrompt: 'What is in the room?',
+    kind: 'review',
+    theme: 'Week 3 Review',
+    title: 'Review Adventure',
+    adventureTitle: 'Water Week 3 Memories',
+    placePhrase: 'on Summer’s review trail',
+    keySentence: 'I remember places.',
+    missionInstruction: 'Say one place and one food sentence at home.',
+    missionSentence: 'I want noodles at the restaurant.',
     vocabulary: [
-      { word: 'hotel', meaningZh: '酒店' },
-      { word: 'room', meaningZh: '房间' },
-      { word: 'key', meaningZh: '钥匙' },
-      { word: 'bed', meaningZh: '床' },
+      { emoji: '🛝', word: 'park', meaningZh: '公园' },
+      { emoji: '🌊', word: 'beach', meaningZh: '海滩' },
+      { emoji: '🍜', word: 'noodles', meaningZh: '面条' },
+      { emoji: '🧑‍⚕️', word: 'doctor', meaningZh: '医生' },
     ],
   },
   {
     dayIndex: 21,
+    kind: 'challenge',
+    theme: 'Week 3 Challenge',
+    title: 'Adventure Challenge',
+    adventureTitle: 'Explorer Challenge 3',
+    placePhrase: 'at Summer’s explorer bridge',
+    keySentence: 'I can use English outside.',
+    missionInstruction: 'Use one English sentence during a family errand.',
+    missionSentence: 'I can use English outside.',
+    vocabulary: [
+      { emoji: '🧭', word: 'explorer', meaningZh: '探险者' },
+      { emoji: '🌉', word: 'bridge', meaningZh: '桥' },
+      { emoji: '🗣️', word: 'use', meaningZh: '使用' },
+      { emoji: '🏠', word: 'outside', meaningZh: '外面' },
+    ],
+  },
+  {
+    dayIndex: 22,
+    kind: 'adventure',
     theme: 'Airport',
     title: 'At the Airport',
     adventureTitle: 'Take a Plane',
     placePhrase: 'at the airport',
     keySentence: 'The plane is ready.',
-    missionPrompt: 'Where do you want to go?',
+    missionInstruction: 'Tell someone where you want to go.',
+    missionSentence: 'I want to go to the airport.',
     vocabulary: [
-      { word: 'plane', meaningZh: '飞机' },
-      { word: 'gate', meaningZh: '登机口' },
-      { word: 'seat', meaningZh: '座位' },
-      { word: 'passport', meaningZh: '护照' },
-    ],
-  },
-  {
-    dayIndex: 22,
-    theme: 'Library',
-    title: 'At the Library',
-    adventureTitle: 'Choose a Book',
-    placePhrase: 'at the library',
-    keySentence: 'I read a story.',
-    missionPrompt: 'What book do you like?',
-    vocabulary: [
-      { word: 'library', meaningZh: '图书馆' },
-      { word: 'story', meaningZh: '故事' },
-      { word: 'quiet', meaningZh: '安静的' },
-      { word: 'page', meaningZh: '页' },
+      { emoji: '✈️', word: 'plane', meaningZh: '飞机' },
+      { emoji: '🚪', word: 'gate', meaningZh: '登机口' },
+      { emoji: '💺', word: 'seat', meaningZh: '座位' },
+      { emoji: '🧳', word: 'bag', meaningZh: '包' },
     ],
   },
   {
     dayIndex: 23,
-    theme: 'Music',
-    title: 'Music Time',
-    adventureTitle: 'Play Music',
-    placePhrase: 'in music class',
-    keySentence: 'I can sing a song.',
-    missionPrompt: 'What song can you sing?',
+    kind: 'adventure',
+    theme: 'Hotel',
+    title: 'At the Hotel',
+    adventureTitle: 'Find Our Room',
+    placePhrase: 'at the hotel',
+    keySentence: 'This is our room.',
+    missionInstruction: 'Point to one thing in your room and name it.',
+    missionSentence: 'This is our room.',
     vocabulary: [
-      { word: 'song', meaningZh: '歌曲' },
-      { word: 'drum', meaningZh: '鼓' },
-      { word: 'piano', meaningZh: '钢琴' },
-      { word: 'dance', meaningZh: '跳舞' },
+      { emoji: '🏨', word: 'hotel', meaningZh: '酒店' },
+      { emoji: '🚪', word: 'room', meaningZh: '房间' },
+      { emoji: '🔑', word: 'key', meaningZh: '钥匙' },
+      { emoji: '🛏️', word: 'bed', meaningZh: '床' },
     ],
   },
   {
     dayIndex: 24,
-    theme: 'Animal Review',
-    title: 'Animal Review',
-    adventureTitle: 'Review Animal Friends',
-    placePhrase: 'with animal cards',
-    keySentence: 'My favorite animal is a panda.',
-    missionPrompt: 'What is your favorite animal?',
-    vocabulary: [
-      { word: 'animal', meaningZh: '动物' },
-      { word: 'favorite', meaningZh: '最喜欢的' },
-      { word: 'small', meaningZh: '小的' },
-      { word: 'big', meaningZh: '大的' },
-    ],
-  },
-  {
-    dayIndex: 25,
-    theme: 'Seasons',
-    title: 'Four Seasons',
-    adventureTitle: 'Choose a Season',
-    placePhrase: 'through the year',
-    keySentence: 'I like spring.',
-    missionPrompt: 'What season do you like?',
-    vocabulary: [
-      { word: 'spring', meaningZh: '春天' },
-      { word: 'summer', meaningZh: '夏天' },
-      { word: 'autumn', meaningZh: '秋天' },
-      { word: 'winter', meaningZh: '冬天' },
-    ],
-  },
-  {
-    dayIndex: 26,
-    theme: 'Festival',
-    title: 'Festival Day',
-    adventureTitle: 'Enjoy a Festival',
-    placePhrase: 'at a festival',
-    keySentence: 'We watch the lights.',
-    missionPrompt: 'What do you do at a festival?',
-    vocabulary: [
-      { word: 'festival', meaningZh: '节日' },
-      { word: 'light', meaningZh: '灯' },
-      { word: 'family', meaningZh: '家人' },
-      { word: 'happy', meaningZh: '开心的' },
-    ],
-  },
-  {
-    dayIndex: 27,
-    theme: 'Space',
-    title: 'Space Trip',
-    adventureTitle: 'Fly to Space',
-    placePhrase: 'in space',
-    keySentence: 'I see the moon.',
-    missionPrompt: 'What can you see in the sky?',
-    vocabulary: [
-      { word: 'moon', meaningZh: '月亮' },
-      { word: 'star', meaningZh: '星星' },
-      { word: 'rocket', meaningZh: '火箭' },
-      { word: 'planet', meaningZh: '行星' },
-    ],
-  },
-  {
-    dayIndex: 28,
+    kind: 'adventure',
     theme: 'Museum',
     title: 'At the Museum',
     adventureTitle: 'Explore a Museum',
     placePhrase: 'at the museum',
     keySentence: 'I see an old vase.',
-    missionPrompt: 'What can you see in a museum?',
+    missionInstruction: 'Look at a picture and say what you see.',
+    missionSentence: 'I see a picture.',
     vocabulary: [
-      { word: 'museum', meaningZh: '博物馆' },
-      { word: 'picture', meaningZh: '图片' },
-      { word: 'vase', meaningZh: '花瓶' },
-      { word: 'old', meaningZh: '旧的' },
+      { emoji: '🏛️', word: 'museum', meaningZh: '博物馆' },
+      { emoji: '🖼️', word: 'picture', meaningZh: '图片' },
+      { emoji: '🏺', word: 'vase', meaningZh: '花瓶' },
+      { emoji: '🕰️', word: 'old', meaningZh: '旧的' },
     ],
   },
   {
-    dayIndex: 29,
+    dayIndex: 25,
+    kind: 'adventure',
     theme: 'Camping',
     title: 'Camping Night',
     adventureTitle: 'Go Camping',
     placePhrase: 'at the campsite',
     keySentence: 'We sleep in a tent.',
-    missionPrompt: 'What do you need for camping?',
+    missionInstruction: 'Tell Gordon one thing you need for camping.',
+    missionSentence: 'We need a tent.',
     vocabulary: [
-      { word: 'tent', meaningZh: '帐篷' },
-      { word: 'fire', meaningZh: '火' },
-      { word: 'forest', meaningZh: '森林' },
-      { word: 'night', meaningZh: '夜晚' },
+      { emoji: '⛺', word: 'tent', meaningZh: '帐篷' },
+      { emoji: '🔥', word: 'fire', meaningZh: '火' },
+      { emoji: '🌲', word: 'forest', meaningZh: '森林' },
+      { emoji: '🌙', word: 'night', meaningZh: '夜晚' },
+    ],
+  },
+  {
+    dayIndex: 26,
+    kind: 'adventure',
+    theme: 'Space',
+    title: 'Space Trip',
+    adventureTitle: 'Fly to Space',
+    placePhrase: 'in space',
+    keySentence: 'I see the moon.',
+    missionInstruction: 'Look at the sky and say one space word.',
+    missionSentence: 'I see the moon.',
+    vocabulary: [
+      { emoji: '🌙', word: 'moon', meaningZh: '月亮' },
+      { emoji: '⭐', word: 'star', meaningZh: '星星' },
+      { emoji: '🚀', word: 'rocket', meaningZh: '火箭' },
+      { emoji: '🪐', word: 'planet', meaningZh: '行星' },
+    ],
+  },
+  {
+    dayIndex: 27,
+    kind: 'adventure',
+    theme: 'Music',
+    title: 'Music Time',
+    adventureTitle: 'Play Music',
+    placePhrase: 'in music class',
+    keySentence: 'I can sing a song.',
+    missionInstruction: 'Sing one line or tap a rhythm and say it in English.',
+    missionSentence: 'I can sing a song.',
+    vocabulary: [
+      { emoji: '🎵', word: 'song', meaningZh: '歌曲' },
+      { emoji: '🥁', word: 'drum', meaningZh: '鼓' },
+      { emoji: '🎹', word: 'piano', meaningZh: '钢琴' },
+      { emoji: '💃', word: 'dance', meaningZh: '跳舞' },
+    ],
+  },
+  {
+    dayIndex: 28,
+    kind: 'review',
+    theme: 'Full Review',
+    title: 'Full Review Adventure',
+    adventureTitle: 'Water the Whole Journey',
+    placePhrase: 'in Summer’s big memory garden',
+    keySentence: 'I remember my journey.',
+    missionInstruction: 'Choose three favorite words from the journey and say them.',
+    missionSentence: 'I remember my journey.',
+    vocabulary: [
+      { emoji: '🌱', word: 'journey', meaningZh: '旅程' },
+      { emoji: '🧠', word: 'remember', meaningZh: '记得' },
+      { emoji: '🌸', word: 'grow', meaningZh: '成长' },
+      { emoji: '⭐', word: 'favorite', meaningZh: '最喜欢的' },
+    ],
+  },
+  {
+    dayIndex: 29,
+    kind: 'challenge',
+    theme: 'Final Challenge',
+    title: 'Final Challenge',
+    adventureTitle: 'Final Explorer Challenge',
+    placePhrase: 'at Summer’s final gate',
+    keySentence: 'I can finish the journey.',
+    missionInstruction: 'Tell Vicky one English sentence you can say now.',
+    missionSentence: 'I can finish the journey.',
+    vocabulary: [
+      { emoji: '🏁', word: 'finish', meaningZh: '完成' },
+      { emoji: '🧭', word: 'challenge', meaningZh: '挑战' },
+      { emoji: '🌟', word: 'brave', meaningZh: '勇敢的' },
+      { emoji: '🎉', word: 'proud', meaningZh: '自豪的' },
     ],
   },
   {
     dayIndex: 30,
-    theme: 'Adventure Review',
-    title: 'Adventure Review',
-    adventureTitle: 'Review the Journey',
-    placePhrase: 'on our journey',
+    kind: 'graduation',
+    theme: 'Graduation Day',
+    title: 'Graduation Day',
+    adventureTitle: 'Celebrate with Summer',
+    placePhrase: 'at Summer’s celebration tree',
     keySentence: 'I can speak English every day.',
-    missionPrompt: 'What English sentence can you say today?',
+    missionInstruction: 'Tell your family one sentence from the 30-day journey.',
+    missionSentence: 'I can speak English every day.',
     vocabulary: [
-      { word: 'adventure', meaningZh: '冒险' },
-      { word: 'review', meaningZh: '复习' },
-      { word: 'learn', meaningZh: '学习' },
-      { word: 'brave', meaningZh: '勇敢的' },
+      { emoji: '🎓', word: 'graduate', meaningZh: '毕业' },
+      { emoji: '🌞', word: 'Summer', meaningZh: '夏天' },
+      { emoji: '🗣️', word: 'speak', meaningZh: '说' },
+      { emoji: '🎉', word: 'celebrate', meaningZh: '庆祝' },
     ],
   },
+];
+
+export const summerGreetingMessages = [
+  'Hi! I missed you. Ready for today’s adventure?',
+  'Welcome back, explorer. Let’s listen first.',
+  'I saved a warm adventure for you today.',
+  'Come in. Today’s English path is ready.',
+  'Hello! Let’s find one brave sentence together.',
+  'I’m happy you came back. Shall we begin?',
+  'Today we listen, speak, and grow a little.',
+  'Your adventure map is waiting.',
+  'Let’s open today’s English door.',
+  'I brought a gentle challenge for you.',
+  'Take a deep breath. I’ll guide you.',
+  'Good to see you. Let’s say English together.',
+  'Today’s words are ready to meet you.',
+  'I have a story and a mission for you.',
+  'Let’s make English part of today.',
+  'Your Memory Garden is growing.',
+  'Step by step, we’ll finish this adventure.',
+  'I’m here. You can try slowly.',
+  'Let’s make one sentence feel easy.',
+  'Ready to explore with me?',
+];
+
+export const summerCelebrationMessages = [
+  'You finished today’s adventure. I’m proud of you.',
+  'You listened carefully and spoke bravely.',
+  'Another adventure is growing in your memory.',
+  'You used real English today.',
+  'Great work. Your English garden is brighter.',
+  'You stayed with the adventure until the end.',
+  'I heard brave English from you today.',
+  'One more day, one more step forward.',
+  'You made today’s words your friends.',
+  'Your story voice is getting stronger.',
+  'You completed the mission path.',
+  'That was a warm English adventure.',
+  'You tried, repeated, and grew.',
+  'I’m saving this adventure in our journey.',
+  'Your explorer heart did well today.',
+  'Today’s sentence can go home with you.',
+  'You turned practice into a real adventure.',
+  'I’m glad we learned together today.',
+  'Your Memory Garden has new seeds.',
+  'Come back soon for the next adventure.',
 ];
 
 function slugText(value: string) {
@@ -670,6 +780,36 @@ function createThemePlan(learner: Learner, day: CurriculumDay): ThemePlan {
   const thirdWord = day.vocabulary[2];
   const fourthWord = day.vocabulary[3];
   const titleSlug = slugText(day.title);
+  const welcomeMessage =
+    summerGreetingMessages[(day.dayIndex - 1) % summerGreetingMessages.length];
+  const celebrationMessage =
+    summerCelebrationMessages[
+      (day.dayIndex - 1) % summerCelebrationMessages.length
+    ];
+  const listeningDialogue = [
+    {
+      speaker: 'companion' as const,
+      text: `Today we are ${day.placePhrase}. Listen for the word ${firstWord.word}.`,
+      chineseHint: `听一听 ${firstWord.meaningZh} 这个词。`,
+    },
+    {
+      speaker: 'learner' as const,
+      text: `I hear ${firstWord.word}.`,
+      chineseHint: `我听到了 ${firstWord.meaningZh}。`,
+    },
+  ];
+  const storySentences = [
+    `Mia goes ${day.placePhrase} with Summer.`,
+    `Summer shows Mia the ${firstWord.word} and the ${secondWord.word}.`,
+    `Mia says, "${day.keySentence}"`,
+    `At home, Mia says, "${day.missionSentence}"`,
+  ];
+  const conversationQuestion =
+    day.kind === 'challenge'
+      ? 'What English sentence can you say bravely today?'
+      : day.kind === 'review'
+        ? 'Which word do you remember best today?'
+        : `What do you see ${day.placePhrase}?`;
 
   return {
     id: `theme_${titleSlug}_day_${day.dayIndex}_${learner.id}`,
@@ -683,76 +823,108 @@ function createThemePlan(learner: Learner, day: CurriculumDay): ThemePlan {
     estimatedMinutes: learner.dailyGoalMinutes,
     generatedBy: 'template',
     content: {
+      theme: day.theme,
+      summerWelcome: {
+        message: welcomeMessage,
+        messages: summerGreetingMessages,
+        voice: {
+          text: `${welcomeMessage} Today we are ${day.placePhrase}.`,
+        },
+      },
+      listening: {
+        dialogue: listeningDialogue,
+        voice: {
+          text: listeningDialogue.map((turn) => turn.text).join(' '),
+        },
+        question: `What word does Summer ask you to listen for?`,
+        choices: [
+          firstWord.word,
+          thirdWord.word,
+          day.kind === 'challenge' ? 'test' : fourthWord.word,
+        ],
+        answer: firstWord.word,
+      },
+      speaking: {
+        repeatWords: day.vocabulary.map((word) => word.word),
+        repeatSentences: [
+          day.keySentence,
+          day.missionSentence,
+          `I can say ${firstWord.word}.`,
+        ],
+      },
       warmup: [
-        `Hello, ${day.theme}!`,
-        `I am ${day.placePhrase}.`,
+        welcomeMessage,
+        `Today we are ${day.placePhrase}.`,
         `I am ready for Day ${day.dayIndex}.`,
       ],
       conversation: [
         {
           speaker: 'companion',
-          text: `What do you see ${day.placePhrase}?`,
-          chineseHint: '你看到了什么？',
+          text: conversationQuestion,
+          chineseHint: '请大声回答 Summer 的问题。',
         },
         {
           speaker: 'learner',
-          text: `I see a ${firstWord.word}.`,
-          chineseHint: `我看到了${firstWord.meaningZh}。`,
-        },
-        {
-          speaker: 'companion',
-          text: `Do you like the ${secondWord.word}?`,
-          chineseHint: '你喜欢它吗？',
-        },
-        {
-          speaker: 'learner',
-          text: `Yes, I like the ${secondWord.word}.`,
-          chineseHint: '是的，我喜欢它。',
+          text: day.missionSentence,
+          chineseHint: '手动完成回答即可。',
         },
       ],
       usefulSentences: [
         day.keySentence,
         `I see a ${firstWord.word}.`,
         `The ${secondWord.word} is here.`,
-        `Can I have the ${thirdWord.word}?`,
+        day.missionSentence,
       ],
       vocabulary: day.vocabulary.map((item, index) => ({
         id: `vocab_${slugText(item.word)}_${day.dayIndex}_${learner.id}`,
+        emoji: item.emoji,
         word: item.word,
+        meaning: item.meaningZh,
         meaningZh: item.meaningZh,
+        voice: item.word,
         example: index === 0 ? day.keySentence : `I see a ${item.word}.`,
         difficulty: item.difficulty ?? 2,
       })),
       story: {
         title: `${day.theme} Story`,
-        paragraphs: [
-          `Mia goes ${day.placePhrase} with her family.`,
-          `She sees a ${firstWord.word}, a ${secondWord.word}, and a ${thirdWord.word}.`,
-          `She says, "${day.keySentence}"`,
-        ],
+        sentences: storySentences,
+        paragraphs: storySentences,
         questions: [
           {
             id: `story_question_${titleSlug}_${learner.id}`,
-            question: `What does Mia see ${day.placePhrase}?`,
+            question: `What does Mia hear ${day.placePhrase}?`,
             options: [
-              `${day.theme} things`,
-              'Only toys',
-              `Only a ${fourthWord.word}`,
+              firstWord.word,
+              thirdWord.word,
+              fourthWord.word,
             ],
-            answer: `${day.theme} things`,
+            answer: firstWord.word,
           },
         ],
       },
+      storyV2: {
+        title: `${day.theme} Story`,
+        sentences: storySentences,
+      },
       shadowing: [
         day.keySentence,
-        `I see a ${firstWord.word}.`,
-        `The ${secondWord.word} is here.`,
+        day.missionSentence,
+        `I can say ${firstWord.word}.`,
       ],
       mission: {
         id: `mission_${titleSlug}_${learner.id}`,
-        instruction: `Ask someone at home: ${day.missionPrompt}`,
-        exampleSentence: day.missionPrompt,
+        instruction: day.missionInstruction,
+        exampleSentence: day.missionSentence,
         status: 'pending',
+      },
+      missionV2: {
+        instruction: day.missionInstruction,
+        exampleSentence: day.missionSentence,
+        familyConnection: 'Use this sentence with someone at home today.',
+      },
+      celebration: {
+        message: celebrationMessage,
+        messages: summerCelebrationMessages,
       },
     },
     createdAt,
@@ -783,6 +955,92 @@ function reconcileMockLearners(existingLearners: Learner[]) {
   });
 }
 
+function mergeVocabularyItems(
+  existingVocabulary: ThemeContent['vocabulary'] | undefined,
+  templateVocabulary: ThemeContent['vocabulary'],
+) {
+  if (!existingVocabulary?.length) {
+    return templateVocabulary;
+  }
+
+  return existingVocabulary.map((item, index) => {
+    const templateItem = templateVocabulary[index];
+
+    return {
+      ...templateItem,
+      ...item,
+      emoji: item.emoji ?? templateItem?.emoji,
+      meaning: item.meaning ?? item.meaningZh ?? templateItem?.meaning,
+      meaningZh: item.meaningZh ?? item.meaning ?? templateItem?.meaningZh,
+      voice: item.voice ?? item.word,
+    };
+  });
+}
+
+function mergeStoryContent(
+  existingStory: ThemeContent['story'] | undefined,
+  templateStory: ThemeContent['story'],
+) {
+  if (!existingStory) {
+    return templateStory;
+  }
+
+  const sentences = existingStory.sentences?.length
+    ? existingStory.sentences
+    : existingStory.paragraphs?.length
+      ? existingStory.paragraphs
+      : templateStory.sentences;
+  const paragraphs = existingStory.paragraphs?.length
+    ? existingStory.paragraphs
+    : sentences;
+
+  return {
+    ...templateStory,
+    ...existingStory,
+    sentences,
+    paragraphs,
+    questions: existingStory.questions?.length
+      ? existingStory.questions
+      : templateStory.questions,
+  };
+}
+
+function mergeThemeContent(
+  existingContent: Partial<ThemeContent> | undefined,
+  templateContent: ThemeContent,
+): ThemeContent {
+  return {
+    ...templateContent,
+    ...existingContent,
+    theme: existingContent?.theme ?? templateContent.theme,
+    summerWelcome:
+      existingContent?.summerWelcome ?? templateContent.summerWelcome,
+    listening: existingContent?.listening ?? templateContent.listening,
+    speaking: existingContent?.speaking ?? templateContent.speaking,
+    warmup: existingContent?.warmup?.length
+      ? existingContent.warmup
+      : templateContent.warmup,
+    conversation: existingContent?.conversation?.length
+      ? existingContent.conversation
+      : templateContent.conversation,
+    usefulSentences: existingContent?.usefulSentences?.length
+      ? existingContent.usefulSentences
+      : templateContent.usefulSentences,
+    vocabulary: mergeVocabularyItems(
+      existingContent?.vocabulary,
+      templateContent.vocabulary,
+    ),
+    story: mergeStoryContent(existingContent?.story, templateContent.story),
+    storyV2: existingContent?.storyV2 ?? templateContent.storyV2,
+    shadowing: existingContent?.shadowing?.length
+      ? existingContent.shadowing
+      : templateContent.shadowing,
+    mission: existingContent?.mission ?? templateContent.mission,
+    missionV2: existingContent?.missionV2 ?? templateContent.missionV2,
+    celebration: existingContent?.celebration ?? templateContent.celebration,
+  };
+}
+
 function reconcileThemePlans(existingThemePlans: ThemePlan[]) {
   const validPlans = existingThemePlans.filter((plan) => plan.learnerId);
   const templateById = new Map(mockThemePlans.map((plan) => [plan.id, plan]));
@@ -796,27 +1054,7 @@ function reconcileThemePlans(existingThemePlans: ThemePlan[]) {
     return {
       ...template,
       ...plan,
-      content: {
-        warmup: plan.content?.warmup?.length
-          ? plan.content.warmup
-          : template.content.warmup,
-        conversation: plan.content?.conversation?.length
-          ? plan.content.conversation
-          : template.content.conversation,
-        usefulSentences: plan.content?.usefulSentences?.length
-          ? plan.content.usefulSentences
-          : template.content.usefulSentences,
-        vocabulary: plan.content?.vocabulary?.length
-          ? plan.content.vocabulary
-          : template.content.vocabulary,
-        story: plan.content?.story?.paragraphs?.length
-          ? plan.content.story
-          : template.content.story,
-        shadowing: plan.content?.shadowing?.length
-          ? plan.content.shadowing
-          : template.content.shadowing,
-        mission: plan.content?.mission ?? template.content.mission,
-      },
+      content: mergeThemeContent(plan.content, template.content),
     };
   });
   const existingPlanIds = new Set(mergedPlans.map((plan) => plan.id));

@@ -1,3 +1,5 @@
+import type { CurriculumV2Content } from '@/types/curriculum';
+
 export type Family = {
   id: string;
   name: string;
@@ -74,7 +76,7 @@ export type ThemePlan = {
   completedAt?: string;
 };
 
-export type ThemeContent = {
+export type ThemeContent = CurriculumV2Content & {
   warmup: string[];
   conversation: ConversationTurn[];
   usefulSentences: string[];
@@ -93,9 +95,12 @@ export type ConversationTurn = {
 
 export type VocabularyItem = {
   id: string;
+  emoji?: string;
   word: string;
   phonetic?: string;
+  meaning?: string;
   meaningZh?: string;
+  voice?: string;
   example: string;
   imagePrompt?: string;
   audioUrl?: string;
@@ -104,6 +109,7 @@ export type VocabularyItem = {
 
 export type StoryContent = {
   title: string;
+  sentences: string[];
   paragraphs: string[];
   questions: StoryQuestion[];
 };
