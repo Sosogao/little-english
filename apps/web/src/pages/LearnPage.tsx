@@ -233,7 +233,7 @@ export function LearnPage() {
           <StepContent
             activeLearnerName={activeLearner.displayName}
             celebrationStats={celebrationStats}
-            companionName={companion?.name ?? 'Your companion'}
+            companionName={companion?.name ?? 'Summer'}
             dueReviewItems={dueReviewItems}
             getMemoryForReviewItem={(reviewItem) =>
               learningMemory.find((memory) => memory.id === reviewItem.memoryId)

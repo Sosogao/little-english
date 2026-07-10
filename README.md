@@ -1,8 +1,8 @@
-# Journey AI
+# Journey English
 
-A local-first family AI learning platform.
+A local-first family English adventure app.
 
-The first product is **Journey English**: an AI companion that helps children practice English every day through adventures, conversation, vocabulary, stories, shadowing, memory review, and family progress.
+**Journey English** is a daily English adventure companion for families. It helps children practice English through adventures, conversation, vocabulary, stories, shadowing, memory review, and family missions.
 
 ## Quick Start for Codex
 

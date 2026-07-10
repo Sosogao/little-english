@@ -26,7 +26,15 @@ export type Companion = {
   learnerId: string;
   name: string;
   avatarEmoji: string;
-  personality: 'gentle' | 'energetic' | 'funny' | 'calm';
+  personality:
+    | 'gentle'
+    | 'energetic'
+    | 'funny'
+    | 'calm'
+    | 'warm'
+    | 'playful'
+    | 'patient'
+    | 'encouraging';
   voiceId?: string;
   createdAt: string;
   updatedAt: string;
