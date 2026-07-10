@@ -296,6 +296,114 @@ type StepContentProps = {
   onContinueNextAdventure: () => void;
 };
 
+function getWelcomeContent(theme: ThemePlan, activeLearnerName: string) {
+  const welcome = theme.content.summerWelcome;
+  const message =
+    welcome?.message ??
+    welcome?.messages?.[(theme.dayIndex - 1) % welcome.messages.length] ??
+    `Hi ${activeLearnerName}! Today we're visiting ${theme.theme}.`;
+  const legacyLines = theme.content.warmup?.length
+    ? theme.content.warmup
+    : [message];
+
+  return {
+    message,
+    voiceText:
+      welcome?.voice?.text ??
+      `${message} Listen carefully. Summer will guide you.`,
+    lines: welcome?.messages?.length ? [message, ...legacyLines.slice(1)] : legacyLines,
+  };
+}
+
+function getListeningContent(
+  theme: ThemePlan,
+  activeLearnerName: string,
+  companionName: string,
+) {
+  const listening = theme.content.listening;
+
+  if (listening?.dialogue?.length) {
+    return {
+      dialogue: listening.dialogue,
+      voiceText:
+        listening.voice?.text ??
+        listening.dialogue
+          .map(
+            (turn) =>
+              `${turn.speaker === 'companion' ? companionName : activeLearnerName}: ${turn.text}`,
+          )
+          .join(' '),
+      question: listening.question,
+      choices: listening.choices ?? [],
+      answer: listening.answer,
+    };
+  }
+
+  const dialogue = theme.content.conversation.slice(0, 2);
+  const legacyQuestion = theme.content.story.questions[0];
+
+  return {
+    dialogue,
+    voiceText: dialogue
+      .map(
+        (turn) =>
+          `${turn.speaker === 'companion' ? companionName : activeLearnerName}: ${turn.text}`,
+      )
+      .join(' '),
+    question: legacyQuestion?.question,
+    choices: legacyQuestion?.options ?? [],
+    answer: legacyQuestion?.answer,
+  };
+}
+
+function getSpeakingContent(theme: ThemePlan) {
+  const speaking = theme.content.speaking;
+  const v2Sentences = speaking?.repeatSentences?.filter(Boolean) ?? [];
+  const legacySentences = theme.content.shadowing?.filter(Boolean) ?? [];
+
+  return {
+    words: speaking?.repeatWords?.filter(Boolean) ?? [],
+    sentences: v2Sentences.length ? v2Sentences : legacySentences,
+  };
+}
+
+function getStoryContent(theme: ThemePlan): StoryView {
+  const storyV2 = theme.content.storyV2;
+  const legacySentences = theme.content.story.sentences?.length
+    ? theme.content.story.sentences
+    : theme.content.story.paragraphs;
+
+  return {
+    title: storyV2?.title ?? theme.content.story.title,
+    sentences: storyV2?.sentences?.length
+      ? storyV2.sentences
+      : legacySentences,
+    question: theme.content.story.questions[0]?.question,
+  };
+}
+
+function getMissionContent(theme: ThemePlan) {
+  const missionV2 = theme.content.missionV2;
+
+  return {
+    instruction: missionV2?.instruction ?? theme.content.mission.instruction,
+    exampleSentence:
+      missionV2?.exampleSentence ?? theme.content.mission.exampleSentence,
+    familyConnection: missionV2?.familyConnection,
+  };
+}
+
+function getCelebrationMessage(theme: ThemePlan) {
+  const celebration = theme.content.celebration;
+  const messages = celebration?.messages?.filter(Boolean) ?? [];
+
+  return (
+    messages[(theme.dayIndex - 1) % messages.length] ??
+    celebration?.message ??
+    `${theme.title} adventure completed.`
+  );
+}
+
 function StepContent({
   activeLearnerName,
   celebrationStats,
@@ -308,38 +416,41 @@ function StepContent({
   hasNextTheme,
   onContinueNextAdventure,
 }: StepContentProps) {
+  const welcome = getWelcomeContent(theme, activeLearnerName);
+  const speaking = getSpeakingContent(theme);
+  const story = getStoryContent(theme);
+  const mission = getMissionContent(theme);
+
   if (stepId === 'warmup') {
     return (
       <LearningPanel
         eyebrow="Summer Welcome"
         title={`Hi ${activeLearnerName}!`}
-        description={`Today we're visiting ${theme.theme}. ${companionName} wants you to listen carefully before you read.`}
+        description={`${companionName} wants you to listen carefully before you read.`}
       >
         <div className="space-y-4">
           <div className="rounded-[2rem] bg-meadow-700 p-6 text-white">
             <p className="text-sm font-semibold uppercase tracking-wide text-meadow-50">
               Adventure start
             </p>
-            <p className="mt-3 text-2xl font-bold">
-              Today we&apos;re visiting {theme.theme}.
-            </p>
+            <p className="mt-3 text-2xl font-bold">{welcome.message}</p>
             <p className="mt-3 text-base leading-7 text-meadow-50">
               Listen carefully. Summer will guide you through this adventure one
               step at a time.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <VoiceActionButton
-                text={`Hi ${activeLearnerName}. Today we're visiting ${theme.theme}. Listen carefully.`}
+                text={welcome.voiceText}
                 label="Play Welcome"
               />
               <VoiceActionButton
-                text={theme.content.warmup.join(' ')}
+                text={welcome.lines.join(' ')}
                 label="Replay"
                 variant="secondary"
               />
             </div>
           </div>
-          <LineList items={theme.content.warmup} />
+          <LineList items={welcome.lines} />
         </div>
       </LearningPanel>
     );
@@ -368,7 +479,7 @@ function StepContent({
         title="Listen, repeat, and mark done"
         description="Summer says the line first. The learner repeats it out loud. No scoring in this adventure."
       >
-        <SpeakStep sentences={theme.content.shadowing} />
+        <SpeakStep words={speaking.words} sentences={speaking.sentences} />
       </LearningPanel>
     );
   }
@@ -432,10 +543,10 @@ function StepContent({
     return (
       <LearningPanel
         eyebrow="Story"
-        title={theme.content.story.title}
+        title={story.title}
         description="Move through the story one sentence at a time."
       >
-        <StoryStep story={theme.content.story} />
+        <StoryStep story={story} />
       </LearningPanel>
     );
   }
@@ -472,14 +583,19 @@ function StepContent({
             Tonight, tell someone at home:
           </p>
           <p className="mt-3 text-2xl font-bold text-amber-900">
-            &quot;{theme.content.mission.exampleSentence}&quot;
+            &quot;{mission.exampleSentence}&quot;
           </p>
           <p className="mt-4 text-sm leading-6 text-slate-700">
-            {theme.content.mission.instruction}
+            {mission.instruction}
           </p>
+          {mission.familyConnection ? (
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              {mission.familyConnection}
+            </p>
+          ) : null}
           <div className="mt-5">
             <VoiceActionButton
-              text={theme.content.mission.exampleSentence}
+              text={mission.exampleSentence}
               label="Play Mission Sentence"
             />
           </div>
@@ -509,28 +625,21 @@ function ListenStep({
   companionName: string;
   theme: ThemePlan;
 }) {
-  const listenTurns = theme.content.conversation.slice(0, 2);
-  const dialogueText = listenTurns
-    .map(
-      (turn) =>
-        `${turn.speaker === 'companion' ? companionName : activeLearnerName}: ${turn.text}`,
-    )
-    .join(' ');
-  const question = theme.content.story.questions[0];
+  const listening = getListeningContent(theme, activeLearnerName, companionName);
 
   return (
     <div className="space-y-5">
       <div className="rounded-[2rem] bg-[#fffdf7] p-5">
         <div className="flex flex-wrap gap-3">
-          <VoiceActionButton text={dialogueText} label="Play Dialogue" />
+          <VoiceActionButton text={listening.voiceText} label="Play Dialogue" />
           <VoiceActionButton
-            text={dialogueText}
+            text={listening.voiceText}
             label="Replay"
             variant="secondary"
           />
         </div>
         <div className="mt-5 space-y-3">
-          {listenTurns.map((turn, index) => (
+          {listening.dialogue.map((turn, index) => (
             <div
               key={`${turn.speaker}-${index}`}
               className={[
@@ -554,15 +663,17 @@ function ListenStep({
           ))}
         </div>
       </div>
-      {question ? (
+      {listening.question ? (
         <div className="rounded-[2rem] bg-meadow-50 p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
             Listening question
           </p>
-          <p className="mt-3 text-lg font-bold text-slate-950">{question.question}</p>
-          {question.options ? (
+          <p className="mt-3 text-lg font-bold text-slate-950">
+            {listening.question}
+          </p>
+          {listening.choices.length > 0 ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {question.options.map((option) => (
+              {listening.choices.map((option) => (
                 <span
                   key={option}
                   className="rounded-full bg-white px-3 py-2 text-sm font-semibold text-slate-700"
@@ -581,9 +692,33 @@ function ListenStep({
   );
 }
 
-function SpeakStep({ sentences }: { sentences: string[] }) {
+function SpeakStep({
+  words,
+  sentences,
+}: {
+  words: string[];
+  sentences: string[];
+}) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
+      {words.length > 0 ? (
+        <div className="rounded-[2rem] bg-meadow-50 p-5">
+          <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
+            Repeat words
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {words.map((word) => (
+              <span
+                key={word}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              >
+                {word}
+                <SpeechButton text={word} />
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {sentences.map((sentence, index) => (
         <div
           key={`${sentence}-${index}`}
@@ -607,10 +742,16 @@ function SpeakStep({ sentences }: { sentences: string[] }) {
   );
 }
 
-function StoryStep({ story }: { story: ThemePlan['content']['story'] }) {
+type StoryView = {
+  title: string;
+  sentences: string[];
+  question?: string;
+};
+
+function StoryStep({ story }: { story: StoryView }) {
   const [sentenceIndex, setSentenceIndex] = useState(0);
-  const sentence = story.paragraphs[sentenceIndex] ?? story.paragraphs[0];
-  const isLastSentence = sentenceIndex >= story.paragraphs.length - 1;
+  const sentence = story.sentences[sentenceIndex] ?? story.sentences[0];
+  const isLastSentence = sentenceIndex >= story.sentences.length - 1;
 
   useEffect(() => {
     setSentenceIndex(0);
@@ -621,7 +762,7 @@ function StoryStep({ story }: { story: ThemePlan['content']['story'] }) {
       <div className="rounded-[2rem] bg-[#fffdf7] p-6">
         <div className="flex items-center justify-between gap-3">
           <span className="rounded-full bg-meadow-100 px-3 py-1 text-xs font-bold text-meadow-700">
-            Sentence {sentenceIndex + 1} / {story.paragraphs.length}
+            Sentence {sentenceIndex + 1} / {story.sentences.length}
           </span>
           <SpeechButton text={sentence} />
         </div>
@@ -640,13 +781,13 @@ function StoryStep({ story }: { story: ThemePlan['content']['story'] }) {
           </button>
         </div>
       </div>
-      {story.questions[0] ? (
+      {story.question ? (
         <div className="rounded-[2rem] bg-meadow-50 p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-meadow-700">
             Story check
           </p>
           <p className="mt-3 text-lg font-bold text-slate-950">
-            {story.questions[0].question}
+            {story.question}
           </p>
         </div>
       ) : null}
@@ -827,15 +968,19 @@ type CelebrationStats = {
 };
 
 function getCelebrationStats(theme: ThemePlan): CelebrationStats {
+  const speaking = getSpeakingContent(theme);
+  const story = getStoryContent(theme);
+
   return {
     wordsLearned: theme.content.vocabulary.length,
     reviewItemsCreated: theme.content.vocabulary.length,
     sentencesPracticed:
-      theme.content.warmup.length +
-      theme.content.conversation.length +
+      getWelcomeContent(theme, '').lines.length +
+      getListeningContent(theme, '', '').dialogue.length +
       theme.content.usefulSentences.length +
-      theme.content.shadowing.length +
-      theme.content.story.paragraphs.length +
+      speaking.words.length +
+      speaking.sentences.length +
+      story.sentences.length +
       1,
   };
 }
@@ -858,6 +1003,7 @@ function CelebrationPage({
   theme,
 }: CelebrationPageProps) {
   const isFinalDay = theme.dayIndex >= 30 || !hasNextTheme;
+  const [celebrationMessage] = useState(() => getCelebrationMessage(theme));
 
   return (
     <div className="space-y-6">
@@ -865,11 +1011,11 @@ function CelebrationPage({
         <p className="text-5xl">🎉</p>
         <h2 className="mt-5 text-4xl font-bold">Congratulations</h2>
         <p className="mt-3 text-xl font-semibold text-meadow-50">
-          {companionName} is proud of you.
+          {celebrationMessage}
         </p>
         <p className="mt-4 max-w-xl text-sm leading-6 text-meadow-50">
-          {activeLearnerName} finished the {theme.title} adventure. You listened,
-          spoke, and used real English today.
+          {activeLearnerName} finished the {theme.title} adventure with{' '}
+          {companionName}. You listened, spoke, and used real English today.
         </p>
       </div>
 
