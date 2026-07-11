@@ -4,6 +4,13 @@ A local-first family English adventure app.
 
 **Journey English** is a daily English adventure companion for families. It helps children practice English through adventures, conversation, vocabulary, stories, shadowing, memory review, and family missions.
 
+## Current Status
+
+Version: v0.6.0-rc1
+Status: Family Beta
+
+No new features should be added until beta feedback is collected.
+
 ## Quick Start for Codex
 
 Read files in this order:

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.0-rc1
+
+- Home V2
+- Adventure Flow V2
+- Curriculum Engine V2
+- Curriculum V2 Wiring
+- Summer Companion improvements
+- Edge Voice support
+- Multi-learner family experience
+
 ## v0.6 Planning
 
 - Shifted the product direction toward English Adventure Companion planning.
